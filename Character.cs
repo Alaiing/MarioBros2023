@@ -28,7 +28,9 @@ namespace Oudidon
         public float CurrentRotation => _currentRotation;
         protected Vector2 _currentScale;
         public Vector2 CurrentScale => _currentScale;
+        protected float _baseSpeed;
         protected float _speed;
+        public float CurrentSpeed => _speed * _baseSpeed;
         private float _moveStep;
         private float _animationSpeed;
         private string _currentAnimation;
@@ -47,6 +49,7 @@ namespace Oudidon
             CanChangeDirection = true;
             LookTo(new Vector2(1, 0));
             _animationSpeed = 1f;
+            _speed = 1f;
             Visible = true;
         }
 
@@ -55,8 +58,18 @@ namespace Oudidon
             _color = color;
         }
 
+        public void SetBaseSpeed(float speed)
+        {
+            _baseSpeed = speed;
+            if (_baseSpeed == 0)
+            {
+                _moveStep = 0;
+            }
+        }
+
         public void SetSpeed(float speed)
         {
+            Debug.WriteLine($"Speed: {speed}");
             _speed = speed;
             if (speed == 0)
             {
@@ -122,7 +135,7 @@ namespace Oudidon
 
         public void Move(float deltaTime)
         {
-            _moveStep += deltaTime * _speed;
+            _moveStep += deltaTime * CurrentSpeed;
             if (_moveStep >= 1)
             {
                 _position += _moveDirection;
