@@ -28,11 +28,12 @@ namespace Oudidon
         public float CurrentRotation => _currentRotation;
         protected Vector2 _currentScale;
         public Vector2 CurrentScale => _currentScale;
-        private float _speed;
+        protected float _speed;
         private float _moveStep;
         private float _animationSpeed;
         private string _currentAnimation;
         private int _currentAnimationFrameCount;
+        private float _currentAnimationSpeed;
 
         public bool CanChangeDirection { get; set; }
 
@@ -45,6 +46,7 @@ namespace Oudidon
             _color = Color.White;
             CanChangeDirection = true;
             LookTo(new Vector2(1, 0));
+            _animationSpeed = 1f;
             Visible = true;
         }
 
@@ -56,6 +58,10 @@ namespace Oudidon
         public void SetSpeed(float speed)
         {
             _speed = speed;
+            if (speed == 0)
+            {
+                _moveStep = 0;
+            }
         }
 
         public void SetAnimationSpeed(float animationSpeed)
@@ -73,9 +79,14 @@ namespace Oudidon
 
         public void SetAnimation(string animationName)
         {
-            _currentAnimation = animationName;
-            _currentAnimationFrameCount = _spriteSheet.GetAnimationFrameCount(animationName);
-            _currentFrame = 0;
+            if (_currentAnimation != animationName)
+            {
+                _currentAnimation = animationName;
+                _currentAnimationFrameCount = _spriteSheet.GetAnimationFrameCount(animationName);
+                _currentAnimationSpeed = _spriteSheet.GetAnimationSpeed(animationName);
+
+                _currentFrame = 0;
+            }
         }
 
         public void MoveTo(Vector2 position)
@@ -121,7 +132,7 @@ namespace Oudidon
 
         public void Animate(float deltaTime)
         {
-            _currentFrame = _currentFrame + deltaTime * _animationSpeed;
+            _currentFrame = _currentFrame + deltaTime * _currentAnimationSpeed * _animationSpeed;
             if (_currentFrame > _currentAnimationFrameCount)
             {
                 _currentFrame = 0;

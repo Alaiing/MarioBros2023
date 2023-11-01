@@ -11,12 +11,13 @@ namespace Oudidon
 		{
 			public int startingFrame;
 			public int endFrame;
+			public float speed;
 			public readonly int FrameCount => endFrame - startingFrame + 1;
 		}
 
 		private readonly Texture2D _texture;
 		private Rectangle[] allFrames;
-		private Dictionary<string, Animation> _animations;
+		private Dictionary<string, Animation> _animations = new Dictionary<string, Animation>();
 
 		public int FrameCount => allFrames.Length;
 
@@ -33,7 +34,7 @@ namespace Oudidon
 			_texture = content.Load<Texture2D>(asset);
 			_spritePivot = new Vector2(spritePivotX, spritePivotY);
 			LeftMargin = spritePivotX;
-			RightMargin = spriteWidth - spritePivotY;
+			RightMargin = spriteWidth - spritePivotX;
 			TopMargin = spritePivotY;
 			BottomMargin = spriteHeight - spritePivotY;
 			InitFrames(spriteWidth, spriteHeight);
@@ -54,19 +55,29 @@ namespace Oudidon
 			}
 		}
 
-		public void RegisterAnimation(string name, int startingFrame, int endingFrame)
+		public void RegisterAnimation(string name, int startingFrame, int endingFrame, float animationSpeed)
 		{
-			_animations.Add(name, new Animation { startingFrame = startingFrame, endFrame = endingFrame });
+			_animations.Add(name, new Animation { startingFrame = startingFrame, endFrame = endingFrame, speed = animationSpeed });
 		}
 
-		public int GetAnimationFrameCount(string animationName)
-		{
+        public int GetAnimationFrameCount(string animationName)
+        {
             if (_animations.TryGetValue(animationName, out Animation animation))
             {
-				return animation.FrameCount;
+                return animation.FrameCount;
             }
 
-			return -1;
+            return -1;
+        }
+
+        public float GetAnimationSpeed(string animationName)
+        {
+            if (_animations.TryGetValue(animationName, out Animation animation))
+            {
+                return animation.speed;
+            }
+
+            return 0f;
         }
 
         public void DrawAnimationFrame(string animationName, int frameIndex, SpriteBatch spriteBatch, Vector2 position, float rotation, Vector2 scale, Color color)
@@ -90,7 +101,7 @@ namespace Oudidon
 				spriteEffects |= SpriteEffects.FlipVertically;
 				scale.Y = -scale.Y;
             }
-            spriteBatch.Draw(_texture, position + _spritePivot, allFrames[frameIndex], color, rotation, _spritePivot, scale, spriteEffects, 0);
+            spriteBatch.Draw(_texture, position, allFrames[frameIndex], color, rotation, _spritePivot, scale, spriteEffects, 0);
         }
     }
 }
