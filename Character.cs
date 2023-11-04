@@ -8,6 +8,7 @@ namespace Oudidon
 {
     public class Character
     {
+        public string name;
         private bool _enabled = true;
         public virtual bool Visible { get; set; }
         public bool IsAlive => _enabled;
@@ -39,6 +40,8 @@ namespace Oudidon
 
         public bool CanChangeDirection { get; set; }
 
+        private Action _onAnimationEnd;
+
         public Character(SpriteSheet spriteSheet)
         {
             _spriteSheet = spriteSheet;
@@ -69,7 +72,6 @@ namespace Oudidon
 
         public void SetSpeed(float speed)
         {
-            Debug.WriteLine($"Speed: {speed}");
             _speed = speed;
             if (speed == 0)
             {
@@ -90,15 +92,18 @@ namespace Oudidon
             }
         }
 
-        public void SetAnimation(string animationName)
+        public void SetAnimation(string animationName, Action onAnimationEnd = null)
         {
-            if (_currentAnimation != animationName)
+            if (_currentAnimation != animationName && _spriteSheet.HasAnimation(animationName))
             {
                 _currentAnimation = animationName;
                 _currentAnimationFrameCount = _spriteSheet.GetAnimationFrameCount(animationName);
                 _currentAnimationSpeed = _spriteSheet.GetAnimationSpeed(animationName);
 
                 _currentFrame = 0;
+
+                _onAnimationEnd = onAnimationEnd;
+                Debug.WriteLine($"{name} - Animation {_currentAnimation} start");
             }
         }
 
@@ -149,6 +154,11 @@ namespace Oudidon
             if (_currentFrame > _currentAnimationFrameCount)
             {
                 _currentFrame = 0;
+                if (_onAnimationEnd != null)
+                {
+                    _onAnimationEnd?.Invoke();
+                    Debug.WriteLine($"{name} - Animation {_currentAnimation} end");
+                }
             }
         }
 

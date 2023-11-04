@@ -60,6 +60,11 @@ namespace Oudidon
 			_animations.Add(name, new Animation { startingFrame = startingFrame, endFrame = endingFrame, speed = animationSpeed });
 		}
 
+		public bool HasAnimation(string name)
+		{
+			return _animations.ContainsKey(name);
+		}
+
         public int GetAnimationFrameCount(string animationName)
         {
             if (_animations.TryGetValue(animationName, out Animation animation))
