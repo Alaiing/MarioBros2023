@@ -165,8 +165,8 @@ namespace MarioBros2023
 
             SpawnTurtle(1);
             _enemies[0].name = "Turtle 1";
-            SpawnTurtle(-1);
-            _enemies[1].name = "Turtle 2";
+            //SpawnTurtle(-1);
+            //_enemies[1].name = "Turtle 2";
         }
 
         protected override void Update(GameTime gameTime)
@@ -456,10 +456,6 @@ namespace MarioBros2023
             _mario.LookTo(new Vector2(1, 0));
             _mario.SetSpeed(1f);
             _mario.SetAnimation("Idle");
-
-            // faire descendre la plateforme
-            // si le joueur touche une commande, la plateforme disparaît
-            // un bout d'un certain temps, la plateforme disparaît toute seule
         }
 
         private void UpdatePlatform(float deltaTime)
@@ -531,7 +527,6 @@ namespace MarioBros2023
 
         protected void BumpEnemy(int positionX, int gridY)
         {
-            Debug.WriteLine("BUMP");
             foreach (Enemy enemy in _enemies)
             {
                 int gridPositionY = enemy.PixelPositionY / 8;
@@ -627,14 +622,10 @@ namespace MarioBros2023
 
         private void SpawnTurtle(int side)
         {
-            Enemy newTurtle = new Enemy(_turtleSpriteSheet, 0.25f, 15f);
+            Enemy newTurtle = new Enemy(_turtleSpriteSheet, 0.25f, 15f, _level);
 
-            int x = side > 0 ? ENEMY_RIGHT_SPAWN_X : ENEMY_LEFT_SPAWN_X;
-            newTurtle.SetAnimation("Walk");
-            newTurtle.MoveTo(new Vector2(x, ENEMY_SPAWN_Y));
-            newTurtle.LookTo(new Vector2(-side, 0));
             newTurtle.SetBaseSpeed(30f);
-
+            newTurtle.Enter(side);
             _enemies.Add(newTurtle);
         }
 

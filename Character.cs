@@ -103,7 +103,6 @@ namespace Oudidon
                 _currentFrame = 0;
 
                 _onAnimationEnd = onAnimationEnd;
-                Debug.WriteLine($"{name} - Animation {_currentAnimation} start");
             }
         }
 
@@ -157,7 +156,6 @@ namespace Oudidon
                 if (_onAnimationEnd != null)
                 {
                     _onAnimationEnd?.Invoke();
-                    Debug.WriteLine($"{name} - Animation {_currentAnimation} end");
                 }
             }
         }

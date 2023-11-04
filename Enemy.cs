@@ -12,70 +12,103 @@ namespace MarioBros2023
 {
     public class Enemy : PlatformCharacter
     {
-        private float _spawnExitTime;
+        private const int SPAWN_Y = 44;
+        private const int LEFT_SPAWN_X = 44;
+        private const int RIGHT_SPAWN_X = 212;
+        private const int EXIT_Y = 199;
+        private const int EXIT_MARGIN = 32;
+        private const string STATE_EXITING = "Exiting";
+        private const string STATE_ENTERING = "Entering";
+
+        private float _enterExitTime;
 
         private const int SPAWN_DISTANCE = 9;
         private const int EXIT_DISTANCE = 16;
 
-        private bool _isExiting;
-        public bool IsExiting => _isExiting;
-        private bool _isEntering;
-        public bool IsEntering => _isEntering;
+        public bool IsExiting => _stateMachine.CurrentState == STATE_EXITING;
+        public bool IsEntering => _stateMachine.CurrentState == STATE_ENTERING;
 
-        public Enemy(SpriteSheet spriteSheet, float jumpDuration, float jumpHeight) : base(spriteSheet, jumpDuration, jumpHeight)
-        {
-            _spawnExitTime = 0;
-            _isEntering = true;
+        private int _enterExitSide;
+
+        public Enemy(SpriteSheet spriteSheet, float jumpDuration, float jumpHeight, bool[,] level) : base(spriteSheet, jumpDuration, jumpHeight, level)
+        {            
         }
 
-        public override void Update(float deltaTime, bool[,] level)
+        protected override void InitStateMachine()
         {
-            base.Update(deltaTime, level);
+            base.InitStateMachine();
+            _stateMachine.AddState(STATE_EXITING, OnEnter: ExitEnter, OnExit: ExitExit, OnUpdate: ExitUpdate);
+            _stateMachine.AddState(STATE_ENTERING, OnEnter: EnterEnter, OnExit: EnterExit, OnUpdate: EnterUpdate);
+        }
+
+        public void Enter(int side)
+        {
+            _enterExitSide = side;
+            _stateMachine.SetState(STATE_ENTERING);
+        }
+
+        protected override void WalkUpdate(float deltaTime)
+        {
+            base.WalkUpdate(deltaTime);
             if (PixelPositionY >= 208)
             {
-                if (MoveDirection.X < 0 && PixelPositionX - SpriteSheet.LeftMargin <= 32
-                    || MoveDirection.X > 0 && PixelPositionX + SpriteSheet.RightMargin > MarioBros.SCREEN_WIDTH - 32)
+                if (MoveDirection.X < 0 && PixelPositionX - SpriteSheet.LeftMargin <= EXIT_MARGIN
+                    || MoveDirection.X > 0 && PixelPositionX + SpriteSheet.RightMargin > MarioBros.SCREEN_WIDTH - EXIT_MARGIN)
                 {
-                    Exit();
+                    _enterExitSide = MathF.Sign(MoveDirection.X);
+                    _stateMachine.SetState(STATE_EXITING);
                 }
-            }
-
-        }
-
-        protected override void UpdateJump(float deltaTime, bool[,] level)
-        {
-            if (_isEntering)
-            {
-                _spawnExitTime += deltaTime;
-                Animate(deltaTime);
-                if (_spawnExitTime < SPAWN_DISTANCE / CurrentSpeed)
-                {
-                    _isEntering = false;
-                }
-            }
-            else if (_isExiting)
-            {
-                _spawnExitTime += deltaTime;
-                if (_spawnExitTime > EXIT_DISTANCE / CurrentSpeed)
-                {
-                    _isExiting = false;
-                    LookTo(new Vector2(-MoveDirection.X, MoveDirection.Y));
-                    MoveTo(new Vector2(Position.X + 16 * MoveDirection.X, 44));
-                    _spawnExitTime = 0;
-                    _isEntering = true;
-                }
-            }
-            else
-            {
-                base.UpdateJump(deltaTime, level);
             }
         }
 
-        public void Exit()
+        private void ExitEnter()
         {
-            _isExiting = true;
-            _spawnExitTime = 0;
-            MoveTo(new Vector2(Position.X, 199));
+            _ignorePlatforms = true;
+            _enterExitTime = 0;
+            SetAnimation("Walk");
+            MoveTo(new Vector2(Position.X, EXIT_Y));
+        }
+
+        private void ExitExit()
+        {
+
+        }
+
+        private void ExitUpdate(float deltaTime)
+        {
+            _enterExitTime += deltaTime;
+            Move(deltaTime);
+            Animate(deltaTime);
+
+            if (_enterExitTime > EXIT_DISTANCE / CurrentSpeed)
+            {
+                _stateMachine.SetState(STATE_ENTERING);
+            }
+        }
+
+        private void EnterEnter() 
+        {
+            _ignorePlatforms = true;
+            _enterExitTime = 0;
+            LookTo(new Vector2(-_enterExitSide, 0));
+            float enterX = _enterExitSide > 0 ? RIGHT_SPAWN_X : LEFT_SPAWN_X;
+            MoveTo(new Vector2(enterX, SPAWN_Y));
+            SetAnimation("Walk");
+        }
+        private void EnterExit() 
+        { 
+            _ignorePlatforms = false;
+        }
+        private void EnterUpdate(float deltaTime)
+        {
+            _enterExitTime += deltaTime;
+            Move(deltaTime);
+            Animate(deltaTime);
+
+            if (_enterExitTime < SPAWN_DISTANCE / CurrentSpeed)
+            {
+                _stateMachine.SetState(STATE_WALK);
+            }
         }
     }
 }
