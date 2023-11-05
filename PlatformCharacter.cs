@@ -228,8 +228,8 @@ namespace MarioBros2023
             _jumpStartingY = Position.Y;
         }
 
-        protected virtual void JumpExit() 
-        { 
+        protected virtual void JumpExit()
+        {
             if (!_isFlipped)
             {
                 SetSpeed(1f);
@@ -293,13 +293,16 @@ namespace MarioBros2023
             _flipTimer += deltaTime;
             if (_flipTimer > _flippedDuration)
             {
-                // TODO: update orientation
                 SetSpeed(1f);
+                SetAnimationSpeed(1f);
                 _stateMachine.SetState(STATE_WALK);
             }
             else
             {
-                // TODO: increase animation speed
+                if (_flipTimer > _flippedDuration / 2)
+                {
+                    SetAnimationSpeed(3f);
+                }
                 Animate(deltaTime);
             }
         }
