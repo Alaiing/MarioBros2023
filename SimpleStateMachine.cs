@@ -40,7 +40,7 @@ namespace Oudidon
 
         public void Update(float deltaTime)
         {
-            _currentState?.OnUpdate(deltaTime);
+            _currentState?.OnUpdate?.Invoke(deltaTime);
         }
     }
 }

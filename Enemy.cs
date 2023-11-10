@@ -12,6 +12,8 @@ namespace MarioBros2023
 {
     public class Enemy : PlatformCharacter
     {
+        public enum EnemyType : int { Turtle = 0, Crab = 1, Fly = 2 }
+
         private const int SPAWN_Y = 44;
         private const int LEFT_SPAWN_X = 44;
         private const int RIGHT_SPAWN_X = 212;
@@ -30,9 +32,7 @@ namespace MarioBros2023
 
         private int _enterExitSide;
 
-        public Enemy(SpriteSheet spriteSheet, float jumpDuration, float jumpHeight, bool[,] level) : base(spriteSheet, jumpDuration, jumpHeight, level)
-        {            
-        }
+        public Enemy(SpriteSheet spriteSheet, bool[,] level) : base(spriteSheet, level) { }
 
         protected override void InitStateMachine()
         {
@@ -44,7 +44,7 @@ namespace MarioBros2023
         public void Enter(int side)
         {
             _enterExitSide = side;
-            _stateMachine.SetState(STATE_ENTERING);
+            SetState(STATE_ENTERING);
         }
 
         protected override void WalkUpdate(float deltaTime)
@@ -56,7 +56,7 @@ namespace MarioBros2023
                     || MoveDirection.X > 0 && PixelPositionX + SpriteSheet.RightMargin > MarioBros.SCREEN_WIDTH - EXIT_MARGIN)
                 {
                     _enterExitSide = MathF.Sign(MoveDirection.X);
-                    _stateMachine.SetState(STATE_EXITING);
+                    SetState(STATE_EXITING);
                 }
             }
         }
@@ -82,11 +82,11 @@ namespace MarioBros2023
 
             if (_enterExitTime > EXIT_DISTANCE / CurrentSpeed)
             {
-                _stateMachine.SetState(STATE_ENTERING);
+                SetState(STATE_ENTERING);
             }
         }
 
-        private void EnterEnter() 
+        private void EnterEnter()
         {
             _ignorePlatforms = true;
             _enterExitTime = 0;
@@ -95,8 +95,8 @@ namespace MarioBros2023
             MoveTo(new Vector2(enterX, SPAWN_Y));
             SetAnimation("Walk");
         }
-        private void EnterExit() 
-        { 
+        private void EnterExit()
+        {
             _ignorePlatforms = false;
         }
         private void EnterUpdate(float deltaTime)
@@ -105,9 +105,10 @@ namespace MarioBros2023
             Move(deltaTime);
             Animate(deltaTime);
 
-            if (_enterExitTime < SPAWN_DISTANCE / CurrentSpeed)
+            if (_enterExitTime > SPAWN_DISTANCE / CurrentSpeed)
             {
-                _stateMachine.SetState(STATE_WALK);
+                Debug.WriteLine($"Enter exit {_enterExitTime}");
+                SetState(STATE_WALK);
             }
         }
     }

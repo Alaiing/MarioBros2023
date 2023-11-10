@@ -31,17 +31,17 @@ namespace MarioBros2023
         private bool _isFlipped;
         private float _flipTimer;
         public bool IsDead => _stateMachine.CurrentState == STATE_DEAD;
-        public bool IsDying { get; private set; }
+        public bool IsDying { get; protected set; }
         public bool IsFlipped => _isFlipped;
         protected float _flippedDuration;
 
         protected SimpleStateMachine _stateMachine;
         private readonly bool[,] _level;
 
-        public PlatformCharacter(SpriteSheet spriteSheet, float jumpDuration, float jumpHeight, bool[,] level) : base(spriteSheet)
+        public bool CanBump;
+
+        public PlatformCharacter(SpriteSheet spriteSheet, bool[,] level) : base(spriteSheet)
         {
-            _jumpDuration = jumpDuration;
-            _jumpHeight = jumpHeight;
             _flippedDuration = ConfigManager.GetConfig("FLIPPED_DURATION", 10);
             _level = level;
 
@@ -60,10 +60,15 @@ namespace MarioBros2023
             _stateMachine.AddState(STATE_DYING, DyingEnter, DyingExit, DyingUpdate);
             _stateMachine.AddState(STATE_DEAD, DeadEnter, DeadExit, DeadUpdate);
 
-            _stateMachine.SetState(STATE_WALK);
+            SetState(STATE_WALK);
         }
 
-        public virtual void Update(float deltaTime, bool[,] level)
+        public void SetState(string stateName)
+        {
+            _stateMachine.SetState(stateName);
+        }
+
+        public virtual void Update(float deltaTime)
         {
             UpdateSideScreen();
 
@@ -85,9 +90,13 @@ namespace MarioBros2023
         protected virtual void UpdateJump(float deltaTime, out bool climaxReached, out bool hitPlatform)
         {
             climaxReached = hitPlatform = false;
-            _jumpTimer += deltaTime;
-            float y = MathUtils.NormalizedParabolicPosition(_jumpTimer / (2 * _jumpDuration)) * _jumpHeight;
-            MoveTo(new Vector2(Position.X, _jumpStartingY - y));
+            if (!_isBumping)
+            {
+                _jumpTimer += deltaTime;
+                float y = MathUtils.NormalizedParabolicPosition(_jumpTimer / (2 * _jumpDuration)) * _jumpHeight;
+                MoveTo(new Vector2(Position.X, _jumpStartingY - y));
+            }
+
             Move(deltaTime);
             Animate(deltaTime);
 
@@ -140,6 +149,20 @@ namespace MarioBros2023
             return gridPositionY > 0 && _level[gridPositionX, gridPositionY];
         }
 
+
+        private bool _isBumping;
+        protected void StartBump()
+        {
+            _isBumping = true;
+            EventsManager.FireEvent("BUMP", this);
+        }
+
+        public void StopBump()
+        {
+            _isBumping = false;
+            SetState(STATE_FALL);
+        }
+
         public void Bump(int direction)
         {
             _isFlipped = !_isFlipped;
@@ -169,16 +192,36 @@ namespace MarioBros2023
                     LookTo(new Vector2(direction, 0));
                 }
             }
-            _stateMachine.SetState(STATE_JUMP);
+            Jump(0.25f, 15);
+            SetState(STATE_JUMP);
         }
 
-        public void Kill(int direction)
+        public void Kill(int direction = 0)
         {
-            _ignorePlatforms = true;
-            _stateMachine.SetState(STATE_FALL);
-            IsDying = true;
-            SetSpeed(1f);
-            LookTo(new Vector2(direction, 0));
+            if (direction != 0)
+            {
+                LookTo(new Vector2(direction, 0));
+            }
+            SetState(STATE_DYING);
+        }
+
+        public void Jump(float duration, float height)
+        {
+            _jumpHeight = height;
+            _jumpDuration = duration;
+            SetState(STATE_JUMP);
+        }
+
+        public void Fall(float duration, float height)
+        {
+            _jumpHeight = height;
+            _jumpDuration = duration;
+            SetState(STATE_FALL);
+        }
+
+        public void Walk()
+        {
+            SetState(STATE_WALK);
         }
 
         public override void Draw(SpriteBatch spriteBatch, int displayOffsetX = 0, int displayOffsetY = 0)
@@ -213,7 +256,7 @@ namespace MarioBros2023
         {
             if (!_ignorePlatforms && !IsOnPlatform())
             {
-                _stateMachine.SetState(STATE_FALL);
+                Fall(0.25f, 15);
                 return;
             }
 
@@ -241,7 +284,11 @@ namespace MarioBros2023
 
             if (climaxReached)
             {
-                _stateMachine.SetState(STATE_FALL);
+                SetState(STATE_FALL);
+            }
+            if (CanBump && hitPlatform && !_isBumping)
+            {
+                StartBump();
             }
         }
 
@@ -265,16 +312,16 @@ namespace MarioBros2023
             {
                 if (_isFlipped)
                 {
-                    _stateMachine.SetState(STATE_FLIPPED);
+                    SetState(STATE_FLIPPED);
                 }
                 else
                 {
-                    _stateMachine.SetState(STATE_WALK);
+                    SetState(STATE_WALK);
                 }
             }
             else if (hitBottom)
             {
-                _stateMachine.SetState(STATE_DEAD);
+                SetState(STATE_DEAD);
             }
         }
 
@@ -295,7 +342,7 @@ namespace MarioBros2023
             {
                 SetSpeed(1f);
                 SetAnimationSpeed(1f);
-                _stateMachine.SetState(STATE_WALK);
+                SetState(STATE_WALK);
             }
             else
             {
@@ -307,11 +354,22 @@ namespace MarioBros2023
             }
         }
 
-        protected virtual void DyingEnter() { }
+        protected virtual void DyingEnter() 
+        {
+            _ignorePlatforms = true;
+            IsDying = true;
+            SetSpeed(1f);
+        }
         protected virtual void DyingExit() { }
-        protected virtual void DyingUpdate(float deltaTime) { }
+        protected virtual void DyingUpdate(float deltaTime) 
+        {
+            Fall(0.25f, 15);
+        }
 
-        protected virtual void DeadEnter() { }
+        protected virtual void DeadEnter() 
+        {
+            EventsManager.FireEvent("DEATH", this);
+        }
         protected virtual void DeadExit() { }
         protected virtual void DeadUpdate(float deltaTime) { }
 
