@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
 using System;
@@ -22,11 +23,47 @@ namespace MarioBros2023
 
         public bool IsMoving => _stateMachine.CurrentState == STATE_JUMP || _stateMachine.CurrentState == STATE_FALL || _currentSpeed != 0;
 
-        public Player(SpriteSheet spriteSheet, bool[,] level, int lives) : base(spriteSheet, level)
+        private SoundEffectInstance[] _pootSteps;
+        private int _currentPootStepIndex;
+        private SoundEffectInstance _skid;
+        private SoundEffectInstance _jump;
+        private SoundEffectInstance _hit;
+        private SoundEffectInstance _death;
+
+        public Player(SpriteSheet spriteSheet, bool[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level)
         {
             _maxSpeed = ConfigManager.GetConfig("MARIO_MAX_SPEED", 75f);
             _acceleration = ConfigManager.GetConfig("MARIO_ACCELERATION", 400f);
             _lives = lives;
+
+            _pootSteps = new SoundEffectInstance[pootSteps.Length];
+            for (int i = 0; i < pootSteps.Length; i++)
+            {
+                _pootSteps[i] = pootSteps[i].CreateInstance();
+                _pootSteps[i].Volume = 0.75f;
+            }
+
+            _skid = skid.CreateInstance();
+            _jump = jump.CreateInstance();
+            _hit = hit.CreateInstance();
+            _death = death.CreateInstance();
+
+            _onAnimationFrame += OnFrameChange;
+            _currentPootStepIndex = 0;
+        }
+
+        private void OnFrameChange(int frameIndex)
+        {
+            if (_stateMachine.CurrentState == STATE_WALK && _currentSpeed != 0)
+            {
+                if (frameIndex == 2)
+                {
+                    //_pootSteps[_currentPootStepIndex].Stop();
+
+                    _currentPootStepIndex = (_currentPootStepIndex + 1) % _pootSteps.Length;
+                    _pootSteps[_currentPootStepIndex].Play();
+                }
+            }
         }
 
         protected override void InitStateMachine()
@@ -49,7 +86,13 @@ namespace MarioBros2023
         {
             IsDying = false;
             _currentSpeed = 0;
+            _currentPootStepIndex = 0;
             Walk();
+        }
+
+        protected override void WalkEnter()
+        {
+            SetAnimation("Idle");
         }
 
         protected override void WalkUpdate(float deltaTime)
@@ -67,6 +110,7 @@ namespace MarioBros2023
                 if (_currentSpeed >= 0)
                 {
                     SetAnimation("Slip");
+                    _skid.Play();
                 }
                 else
                 {
@@ -85,6 +129,7 @@ namespace MarioBros2023
                 if (_currentSpeed <= 0)
                 {
                     SetAnimation("Slip");
+                    _skid.Play();
                 }
                 else
                 {
@@ -95,6 +140,7 @@ namespace MarioBros2023
             {
                 hasInput = true;
                 Jump(ConfigManager.GetConfig("MARIO_JUMP_DURATION", 0.5f), ConfigManager.GetConfig("MARIO_JUMP_HEIGHT", 75));
+                _jump.Play();
             }
 
             if (!hasInput)
@@ -102,6 +148,7 @@ namespace MarioBros2023
                 if (_currentSpeed != 0)
                 {
                     SetAnimation("Slip");
+                    _skid.Play();
                     float previousSpeed = _currentSpeed;
                     _currentSpeed += -MathF.Sign(_currentSpeed) * _acceleration * deltaTime;
                     if (previousSpeed * _currentSpeed < 0)
@@ -116,7 +163,7 @@ namespace MarioBros2023
             }
             else
             {
-                _ignorePlatforms = false;
+                IgnorePlatforms = false;
             }
 
             if (_currentSpeed != 0)
@@ -134,6 +181,7 @@ namespace MarioBros2023
             base.DyingEnter();
             _dyingTimer = 0;
             SetAnimation("Hit");
+            _hit.Play();
         }
 
         protected override void DyingUpdate(float deltaTime)
@@ -145,6 +193,7 @@ namespace MarioBros2023
                 _currentSpeed = 0;
                 Jump(0.25f, 15);
                 SetAnimation("Death");
+                _death.Play();
             }
         }
 
@@ -163,5 +212,7 @@ namespace MarioBros2023
             SetAnimation("Idle");
             IsDying = false;
         }
+
+        protected override void JumpExit() { }
     }
 }

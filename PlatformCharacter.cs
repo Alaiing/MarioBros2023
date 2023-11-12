@@ -100,7 +100,7 @@ namespace MarioBros2023
             Move(deltaTime);
             Animate(deltaTime);
 
-            if (IsUnderPlatform())
+            if (!IgnorePlatforms && IsUnderPlatform())
             {
                 hitPlatform = true;
             }
@@ -114,7 +114,7 @@ namespace MarioBros2023
         {
             landed = hitBottom = false;
 
-            if (!_ignorePlatforms && IsOnPlatform())
+            if (!IgnorePlatforms && IsOnPlatform())
             {
                 MoveTo(new Vector2(Position.X, (PixelPositionY / 8) * 8));
                 landed = true;
@@ -233,7 +233,7 @@ namespace MarioBros2023
         }
 
         #region States
-        protected bool _ignorePlatforms;
+        public bool IgnorePlatforms;
         protected virtual void IdleEnter()
         {
             SetAnimation("Idle");
@@ -248,13 +248,13 @@ namespace MarioBros2023
 
         protected virtual void WalkEnter()
         {
-            SetAnimation("Walk");
+            SetAnimation("Run");
         }
         protected virtual void WalkExit() { }
 
         protected virtual void WalkUpdate(float deltaTime)
         {
-            if (!_ignorePlatforms && !IsOnPlatform())
+            if (!IgnorePlatforms && !IsOnPlatform())
             {
                 Fall(0.25f, 15);
                 return;
@@ -356,7 +356,7 @@ namespace MarioBros2023
 
         protected virtual void DyingEnter() 
         {
-            _ignorePlatforms = true;
+            IgnorePlatforms = true;
             IsDying = true;
             SetSpeed(1f);
         }

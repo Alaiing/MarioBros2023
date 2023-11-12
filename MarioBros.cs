@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualBasic.Logging;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Oudidon;
@@ -64,6 +65,7 @@ namespace MarioBros2023
         private SimpleStateMachine _gameStateMachine;
         private const string STATE_TITLE = "Title";
         private const string STATE_GAME = "Game";
+        private const string STATE_LEVEL_START = "LevelStart";
         private const string STATE_GAME_OVER = "GameOver";
         private const string STATE_LEVEL_CLEARED = "LevelCleared";
 
@@ -73,6 +75,18 @@ namespace MarioBros2023
         private int _currentLevelIndex;
         private Level _currentLevel;
         private int _killedEnemies;
+
+        private SoundEffect[] _pootSteps;
+        private SoundEffect _skid;
+        private SoundEffect _jump;
+        private SoundEffect _hit;
+        private SoundEffect _death;
+
+        private SoundEffect _splash;
+
+        private SoundEffect _startGameJingle;
+        private SoundEffect _startLevelJingle;
+        private SoundEffect _currentJingle;
 
         public MarioBros()
         {
@@ -97,7 +111,8 @@ namespace MarioBros2023
 
             _gameStateMachine = new SimpleStateMachine();
             _gameStateMachine.AddState(STATE_TITLE, OnEnter: null, OnExit: null, OnUpdate: TitleUpdate);
-            _gameStateMachine.AddState(STATE_GAME, OnEnter: StartLevel, OnExit: null, OnUpdate: GameplayUpdate);
+            _gameStateMachine.AddState(STATE_LEVEL_START, OnEnter: LevelStartEnter, OnExit: LevelStartEnd, OnUpdate: LevelStartUpdate);
+            _gameStateMachine.AddState(STATE_GAME, OnEnter: null, OnExit: null, OnUpdate: GameplayUpdate);
             _gameStateMachine.AddState(STATE_GAME_OVER, OnEnter: () => _stateChangeTimer = 0, OnExit: null, OnUpdate: GameOverUpdate);
             _gameStateMachine.AddState(STATE_LEVEL_CLEARED, OnEnter: () => _stateChangeTimer = 0, OnExit: null, OnUpdate: LevelClearedUpdate);
             _gameStateMachine.SetState(STATE_TITLE);
@@ -109,6 +124,25 @@ namespace MarioBros2023
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             ConfigManager.LoadConfig("config.ini");
+
+            _pootSteps = new SoundEffect[8];
+            _pootSteps[0] = Content.Load<SoundEffect>("pout1");
+            _pootSteps[1] = Content.Load<SoundEffect>("pout2");
+            _pootSteps[2] = Content.Load<SoundEffect>("pout3");
+            _pootSteps[3] = _pootSteps[1];
+            _pootSteps[4] = _pootSteps[2];
+            _pootSteps[5] = _pootSteps[1];
+            _pootSteps[6] = _pootSteps[2];
+            _pootSteps[7] = Content.Load<SoundEffect>("pout4");
+            _skid = Content.Load<SoundEffect>("criii");
+            _jump = Content.Load<SoundEffect>("zboui");
+            _hit = Content.Load<SoundEffect>("huii");
+            _death = Content.Load<SoundEffect>("flbflbflb");
+
+            _splash = Content.Load<SoundEffect>("plouf");
+
+            _startGameJingle = Content.Load<SoundEffect>("tadoudi");
+            _startLevelJingle = Content.Load<SoundEffect>("doudidou");
 
             _marioSpriteSheet = new SpriteSheet(Content, "Mario", 16, 24, 8, 24);
             _marioSpriteSheet.RegisterAnimation("Idle", 0, 0, 0);
@@ -165,8 +199,7 @@ namespace MarioBros2023
 
             _marioHeadSprite = Content.Load<Texture2D>("mario-head");
 
-            _mario = new Player(_marioSpriteSheet, _level, 2);
-            _mario.MoveTo(new Vector2(68, 208));
+            _mario = new Player(_marioSpriteSheet, _level, 2, _pootSteps, _skid, _jump, _hit, _death);
             _mario.CanBump = true;
 
             _titleSprite = Content.Load<Texture2D>("title-screen");
@@ -179,7 +212,8 @@ namespace MarioBros2023
         {
             _mario.ResetLives(2);
             _currentLevelIndex = 0;
-            _gameStateMachine.SetState(STATE_GAME);
+            _currentJingle = _startGameJingle;
+            _gameStateMachine.SetState(STATE_LEVEL_START);
         }
 
         private void StartLevel()
@@ -188,9 +222,11 @@ namespace MarioBros2023
             _currentLevel.ResetSpawn();
             _mario.ResetState();
             _mario.MoveTo(new Vector2(68, 208));
+            _mario.Walk();
             _enemies.Clear();
 
             _killedEnemies = 0;
+            _currentJingle.Play();
         }
 
         protected override void Update(GameTime gameTime)
@@ -213,7 +249,7 @@ namespace MarioBros2023
             if (SimpleControls.IsStartDown())
             {
                 StartGame();
-                GameplayUpdate(deltaTime);
+                //GameplayUpdate(deltaTime);
             }
         }
 
@@ -301,6 +337,27 @@ namespace MarioBros2023
             }
         }
 
+        private float _levelStartTimer;
+        private void LevelStartEnter()
+        {
+            _levelStartTimer = 0;
+            StartLevel();
+        }
+
+        private void LevelStartUpdate(float deltaTime)
+        {
+            _levelStartTimer += deltaTime;
+            if (_levelStartTimer > _currentJingle.Duration.TotalSeconds)
+            {
+                _gameStateMachine.SetState(STATE_GAME);
+            }
+        }
+
+        private void LevelStartEnd()
+        {
+            _currentJingle = _startLevelJingle;
+        }
+
         private void LevelClearedUpdate(float deltaTime)
         {
             _stateChangeTimer += deltaTime;
@@ -309,7 +366,7 @@ namespace MarioBros2023
                 _currentLevelIndex++;
                 if (_currentLevelIndex < _levels.Count)
                 {
-                    _gameStateMachine.SetState(STATE_GAME);
+                    _gameStateMachine.SetState(STATE_LEVEL_START);
                 }
                 else
                 {
@@ -325,6 +382,7 @@ namespace MarioBros2023
 
         private void OnCharacterDeath(PlatformCharacter character)
         {
+            Splash(character.PixelPositionX);
             if (character is Enemy enemy)
             {
                 _enemies.Remove(enemy);
@@ -374,7 +432,7 @@ namespace MarioBros2023
                 }
 
                 _respawnPlatformTimer += deltaTime;
-                if (_respawnPlatformTimer < RESPAWN_PLATFORM_APPEARANCE_DURATION)
+                if (_respawnPlatformTimer <= RESPAWN_PLATFORM_APPEARANCE_DURATION)
                 {
                     _respawnPlatformY = MathHelper.Lerp(RESPAWN_PLATFORM_START_Y, RESPAWN_PLATFORM_Y, _respawnPlatformTimer / 2f);
                     _mario.MoveTo(new Vector2(RESPAWN_PLATFORM_X + 8, _respawnPlatformY));
@@ -398,6 +456,7 @@ namespace MarioBros2023
         private void ClearPlatform()
         {
             _respawnPlatformCurrentFrame = -1f;
+            _mario.IgnorePlatforms = false;
         }
 
         private void StartBump(PlatformCharacter character)
@@ -466,9 +525,8 @@ namespace MarioBros2023
                 case STATE_TITLE:
                     TitleDraw();
                     break;
+                case STATE_LEVEL_START:
                 case STATE_GAME:
-                    GameplayDraw(deltaTime);
-                    break;
                 case STATE_LEVEL_CLEARED:
                     GameplayDraw(deltaTime);
                     break;
@@ -501,7 +559,6 @@ namespace MarioBros2023
             }
 
             DrawLevel(_spriteBatch, deltaTime);
-
 
             foreach (Enemy enemy in _enemies)
             {
@@ -575,7 +632,7 @@ namespace MarioBros2023
             {
                 default:
                 case Enemy.EnemyType.Turtle:
-                    SpawnTurtle(_random.Next(0,2) * 2 - 1);
+                    SpawnTurtle(_random.Next(0, 2) * 2 - 1);
                     break;
             }
         }
@@ -593,6 +650,7 @@ namespace MarioBros2023
         {
             _splashX = x;
             _splashCurrentFrame = 0;
+            _splash.Play();
         }
     }
 }

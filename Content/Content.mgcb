@@ -13,6 +13,30 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin criii.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:criii.wav
+
+#begin crrr.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:crrr.wav
+
+#begin doudidou.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:doudidou.wav
+
+#begin flbflbflb.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:flbflbflb.wav
+
 #begin game-over.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -24,6 +48,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:game-over.png
+
+#begin huii.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:huii.wav
 
 #begin mario-head.png
 /importer:TextureImporter
@@ -61,6 +91,66 @@
 /processorParam:TextureFormat=Color
 /build:overlay.png
 
+#begin pili.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pili.wav
+
+#begin plouf.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:plouf.wav
+
+#begin pout1-high.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout1-high.wav
+
+#begin pout1.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout1.wav
+
+#begin pout2-high.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout2-high.wav
+
+#begin pout2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout2.wav
+
+#begin pout3-high.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout3-high.wav
+
+#begin pout3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout3.wav
+
+#begin pout4-high.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout4-high.wav
+
+#begin pout4.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pout4.wav
+
 #begin respawn.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -84,6 +174,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:splash.png
+
+#begin tadoudi.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tadoudi.wav
 
 #begin tile-bump.png
 /importer:TextureImporter
@@ -132,4 +228,16 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:turtle.png
+
+#begin twitwit.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:twitwit.wav
+
+#begin zboui.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:zboui.wav
 

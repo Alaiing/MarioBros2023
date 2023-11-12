@@ -41,6 +41,7 @@ namespace Oudidon
         public bool CanChangeDirection { get; set; }
 
         private Action _onAnimationEnd;
+        protected Action<int> _onAnimationFrame;
 
         public Character(SpriteSheet spriteSheet)
         {
@@ -149,6 +150,7 @@ namespace Oudidon
 
         public void Animate(float deltaTime)
         {
+            int previousFrame = (int)MathF.Floor(_currentFrame);
             _currentFrame = _currentFrame + deltaTime * _currentAnimationSpeed * _animationSpeed;
             if (_currentFrame > _currentAnimationFrameCount)
             {
@@ -157,6 +159,11 @@ namespace Oudidon
                 {
                     _onAnimationEnd?.Invoke();
                 }
+            }
+            int newFrame = (int)MathF.Floor(_currentFrame);
+            if (previousFrame != newFrame)
+            {
+                _onAnimationFrame?.Invoke(newFrame);
             }
         }
 
