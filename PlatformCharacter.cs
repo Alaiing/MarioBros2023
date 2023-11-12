@@ -70,9 +70,13 @@ namespace MarioBros2023
 
         public virtual void Update(float deltaTime)
         {
-            UpdateSideScreen();
-
             _stateMachine.Update(deltaTime);
+        }
+
+        public override void Move(float deltaTime)
+        {
+            base.Move(deltaTime);
+            UpdateSideScreen();
         }
 
         private void UpdateSideScreen()

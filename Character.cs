@@ -138,7 +138,7 @@ namespace Oudidon
             _currentRotation = _orientation.X * _orientation.Y * MathF.PI / 2;
         }
 
-        public void Move(float deltaTime)
+        public virtual void Move(float deltaTime)
         {
             _moveStep += deltaTime * CurrentSpeed;
             if (_moveStep >= 1)
