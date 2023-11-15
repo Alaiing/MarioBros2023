@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
 using System;
@@ -36,14 +37,17 @@ namespace MarioBros2023
         protected float _flippedDuration;
 
         protected SimpleStateMachine _stateMachine;
-        private readonly bool[,] _level;
+        private readonly MarioBros.LevelTile[,] _level;
 
         public bool CanBump;
 
-        public PlatformCharacter(SpriteSheet spriteSheet, bool[,] level) : base(spriteSheet)
+        private SoundEffectInstance _bumpSound;
+
+        public PlatformCharacter(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect bumpSound) : base(spriteSheet)
         {
             _flippedDuration = ConfigManager.GetConfig("FLIPPED_DURATION", 10);
             _level = level;
+            _bumpSound = bumpSound?.CreateInstance();
 
             InitStateMachine();
         }
@@ -143,14 +147,14 @@ namespace MarioBros2023
         {
             int gridPositionX = PixelPositionX / 8;
             int gridPositionY = PixelPositionY / 8;
-            return gridPositionY == 29 || _level[gridPositionX, gridPositionY];
+            return gridPositionY == 29 || _level[gridPositionX, gridPositionY] != MarioBros.LevelTile.Empty;
         }
 
         private bool IsUnderPlatform()
         {
             int gridPositionX = PixelPositionX / 8;
             int gridPositionY = (PixelPositionY - 20) / 8;
-            return gridPositionY > 0 && _level[gridPositionX, gridPositionY];
+            return gridPositionY > 0 && _level[gridPositionX, gridPositionY] != MarioBros.LevelTile.Empty;
         }
 
 
@@ -167,7 +171,7 @@ namespace MarioBros2023
             SetState(STATE_FALL);
         }
 
-        public void Bump(int direction)
+        public void Bump(int direction, bool withSound)
         {
             _isFlipped = !_isFlipped;
             if (_isFlipped)
@@ -181,6 +185,10 @@ namespace MarioBros2023
                 else
                 {
                     LookTo(new Vector2(direction, 0));
+                }
+                if (withSound)
+                {
+                    _bumpSound.Play();
                 }
             }
             else
@@ -358,19 +366,19 @@ namespace MarioBros2023
             }
         }
 
-        protected virtual void DyingEnter() 
+        protected virtual void DyingEnter()
         {
             IgnorePlatforms = true;
             IsDying = true;
             SetSpeed(1f);
         }
         protected virtual void DyingExit() { }
-        protected virtual void DyingUpdate(float deltaTime) 
+        protected virtual void DyingUpdate(float deltaTime)
         {
             Fall(0.25f, 15);
         }
 
-        protected virtual void DeadEnter() 
+        protected virtual void DeadEnter()
         {
             EventsManager.FireEvent("DEATH", this);
         }

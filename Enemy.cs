@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
 using System;
@@ -32,7 +33,12 @@ namespace MarioBros2023
 
         private int _enterExitSide;
 
-        public Enemy(SpriteSheet spriteSheet, bool[,] level) : base(spriteSheet, level) { }
+        private SoundEffectInstance _spawnSound;
+
+        public Enemy(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect spawnSound, SoundEffect bumpSound) : base(spriteSheet, level, bumpSound) 
+        { 
+            _spawnSound = spawnSound.CreateInstance();
+        }
 
         protected override void InitStateMachine()
         {
@@ -98,6 +104,7 @@ namespace MarioBros2023
         private void EnterExit()
         {
             IgnorePlatforms = false;
+            _spawnSound.Play();
         }
         private void EnterUpdate(float deltaTime)
         {
@@ -110,6 +117,12 @@ namespace MarioBros2023
                 Debug.WriteLine($"Enter exit {_enterExitTime}");
                 SetState(STATE_WALK);
             }
+        }
+
+        protected override void DyingEnter()
+        {
+            base.DyingEnter();
+            EventsManager.FireEvent<Enemy>("ENEMY_DEATH_SOUND", this);
         }
     }
 }

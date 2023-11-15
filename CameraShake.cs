@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,10 +16,11 @@ namespace Oudidon
         private static float _shakeIntensity;
         private static float _shakeAmplitude;
         private static float _shakeDuration;
+        private static Vector2 _shakeDirection;
         private static Vector2 _shakeOffset = Vector2.Zero;
         public static Vector2 ShakeOffset => _shakeOffset;
 
-        public static void Shake(float amplitude, float intensity, float duration)
+        public static void Shake(Vector2 direction, float amplitude, float intensity, float duration)
         {
             if (!_isScreenShaking && Enabled)
             {
@@ -27,6 +29,7 @@ namespace Oudidon
                 _shakeIntensity = intensity;
                 _shakeDuration = duration;
                 _shakeAmplitude = amplitude;
+                _shakeDirection = direction; // TODO: normalize components
             }
         }
 
@@ -38,7 +41,7 @@ namespace Oudidon
                 float intensityTime = _shakeTime * _shakeIntensity;
                 if (_shakeDuration < 0 || _shakeTime < _shakeDuration)
                 {
-                    _shakeOffset = new Vector2(MathF.Sin(intensityTime), MathF.Cos(intensityTime)) * _shakeAmplitude;
+                    _shakeOffset = new Vector2(MathF.Cos(intensityTime) * _shakeDirection.X, MathF.Sin(intensityTime) * _shakeDirection.Y) * _shakeAmplitude;
                 }
                 else
                 {

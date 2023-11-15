@@ -30,7 +30,7 @@ namespace MarioBros2023
         private SoundEffectInstance _hit;
         private SoundEffectInstance _death;
 
-        public Player(SpriteSheet spriteSheet, bool[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level)
+        public Player(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level, null)
         {
             _maxSpeed = ConfigManager.GetConfig("MARIO_MAX_SPEED", 75f);
             _acceleration = ConfigManager.GetConfig("MARIO_ACCELERATION", 400f);

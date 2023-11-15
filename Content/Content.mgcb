@@ -13,6 +13,12 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin beuha.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:beuha.wav
+
 #begin criii.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -24,6 +30,12 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:crrr.wav
+
+#begin dimdoum.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:dimdoum.wav
 
 #begin doudidou.wav
 /importer:WavImporter
@@ -48,6 +60,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:game-over.png
+
+#begin grlgrlgrl.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:grlgrlgrl.wav
+
+#begin grlgrlgrlgrlgrlgrl.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:grlgrlgrlgrlgrlgrl.wav
 
 #begin huii.wav
 /importer:WavImporter
@@ -90,6 +114,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:overlay.png
+
+#begin pehou.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:pehou.wav
 
 #begin pili.wav
 /importer:WavImporter
@@ -151,6 +181,24 @@
 /processorParam:Quality=Best
 /build:pout4.wav
 
+#begin pow.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:pow.png
+
+#begin powpow.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:powpow.wav
+
 #begin respawn.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -180,6 +228,12 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:tadoudi.wav
+
+#begin tbltbltbltbl.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tbltbltbltbl.wav
 
 #begin tile-bump.png
 /importer:TextureImporter
@@ -240,4 +294,10 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:zboui.wav
+
+#begin zboui2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:zboui2.wav
 

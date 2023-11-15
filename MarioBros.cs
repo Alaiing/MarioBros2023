@@ -4,7 +4,6 @@ using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Oudidon;
-using SharpDX.XAudio2;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -50,7 +49,8 @@ namespace MarioBros2023
         private const float RESPAWN_PLATFORM_Y = 40f;
         private const float RESPAWN_PLATFORM_X = 108f;
 
-        private bool[,] _level;
+        public enum LevelTile { Empty, Tile, Pow }
+        private LevelTile[,] _level;
         private SpriteSheet _tiles;
         private SpriteSheet _bumpTiles;
         private Texture2D _levelOverlay;
@@ -61,6 +61,8 @@ namespace MarioBros2023
 
         private Texture2D _marioHeadSprite;
         private Texture2D _gameOverSprite;
+
+        private SpriteSheet _powSprite;
 
         private SimpleStateMachine _gameStateMachine;
         private const string STATE_TITLE = "Title";
@@ -75,18 +77,28 @@ namespace MarioBros2023
         private int _currentLevelIndex;
         private Level _currentLevel;
         private int _killedEnemies;
+        private int _powLeft;
 
         private SoundEffect[] _pootSteps;
-        private SoundEffect _skid;
-        private SoundEffect _jump;
-        private SoundEffect _hit;
-        private SoundEffect _death;
+        private SoundEffect _skidSounds;
+        private SoundEffect _jumpSounds;
+        private SoundEffect _hitSound;
+        private SoundEffect _deathSound;
+        private SoundEffect _respawnSound;
 
         private SoundEffect _splash;
 
         private SoundEffect _startGameJingle;
         private SoundEffect _startLevelJingle;
         private SoundEffect _currentJingle;
+        private SoundEffect _endLevelJingle;
+        private SoundEffect _gameOverJingle;
+
+        private SoundEffect _enemySpawn;
+        private SoundEffect _enemyFlip;
+        private SoundEffect _enemyDie;
+
+        private SoundEffect _powSound;
 
         public MarioBros()
         {
@@ -108,16 +120,31 @@ namespace MarioBros2023
             EventsManager.ListenTo<PlatformCharacter>("BUMP", StartBump);
             EventsManager.ListenTo<PlatformCharacter>("DEATH", OnCharacterDeath);
             EventsManager.ListenTo<Enemy.EnemyType>("SPAWN_ENEMY", OnEnemySpawn);
+            EventsManager.ListenTo<Enemy>("ENEMY_DEATH_SOUND", OnEnemyDeathSound);
 
             _gameStateMachine = new SimpleStateMachine();
             _gameStateMachine.AddState(STATE_TITLE, OnEnter: null, OnExit: null, OnUpdate: TitleUpdate);
             _gameStateMachine.AddState(STATE_LEVEL_START, OnEnter: LevelStartEnter, OnExit: LevelStartEnd, OnUpdate: LevelStartUpdate);
             _gameStateMachine.AddState(STATE_GAME, OnEnter: null, OnExit: null, OnUpdate: GameplayUpdate);
-            _gameStateMachine.AddState(STATE_GAME_OVER, OnEnter: () => _stateChangeTimer = 0, OnExit: null, OnUpdate: GameOverUpdate);
+            _gameStateMachine.AddState(STATE_GAME_OVER, OnEnter: GameOverEnter, OnExit: null, OnUpdate: GameOverUpdate);
             _gameStateMachine.AddState(STATE_LEVEL_CLEARED, OnEnter: () => _stateChangeTimer = 0, OnExit: null, OnUpdate: LevelClearedUpdate);
             _gameStateMachine.SetState(STATE_TITLE);
 
+            CameraShake.Enabled = true;
+
             base.Initialize();
+        }
+
+        private void OnEnemyDeathSound(Enemy enemy)
+        {
+            if (_killedEnemies == _currentLevel.EnemyCount - 1)
+            {
+                _endLevelJingle.Play();
+            }
+            else
+            {
+                _enemyDie.Play();
+            }
         }
 
         protected override void LoadContent()
@@ -134,15 +161,24 @@ namespace MarioBros2023
             _pootSteps[5] = _pootSteps[1];
             _pootSteps[6] = _pootSteps[2];
             _pootSteps[7] = Content.Load<SoundEffect>("pout4");
-            _skid = Content.Load<SoundEffect>("criii");
-            _jump = Content.Load<SoundEffect>("zboui");
-            _hit = Content.Load<SoundEffect>("huii");
-            _death = Content.Load<SoundEffect>("flbflbflb");
+            _skidSounds = Content.Load<SoundEffect>("criii");
+            _jumpSounds = Content.Load<SoundEffect>("zboui2");
+            _hitSound = Content.Load<SoundEffect>("huii");
+            _deathSound = Content.Load<SoundEffect>("flbflbflb");
+            _respawnSound = Content.Load<SoundEffect>("tbltbltbltbl");
 
             _splash = Content.Load<SoundEffect>("plouf");
 
+            _enemySpawn = Content.Load<SoundEffect>("pehou");
+            _enemyFlip = Content.Load<SoundEffect>("beuha");
+            _enemyDie = Content.Load<SoundEffect>("grlgrlgrl");
+
             _startGameJingle = Content.Load<SoundEffect>("tadoudi");
             _startLevelJingle = Content.Load<SoundEffect>("doudidou");
+            _endLevelJingle = Content.Load<SoundEffect>("grlgrlgrlgrlgrlgrl");
+            _gameOverJingle = Content.Load<SoundEffect>("dimdoum");
+
+            _powSound = Content.Load<SoundEffect>("powpow");
 
             _marioSpriteSheet = new SpriteSheet(Content, "Mario", 16, 24, 8, 24);
             _marioSpriteSheet.RegisterAnimation("Idle", 0, 0, 0);
@@ -165,31 +201,31 @@ namespace MarioBros2023
             _respawnPlatform = new SpriteSheet(Content, "respawn", 16, 8);
             _respawnPlatformCurrentFrame = -1f;
 
-            _level = new bool[32, 30];
+            _level = new LevelTile[32, 30];
             for (int i = 0; i < 12; i++)
             {
-                _level[i, 20] = true;
-                _level[31 - i, 20] = true;
+                _level[i, 20] = LevelTile.Tile;
+                _level[31 - i, 20] = LevelTile.Tile;
             }
             for (int i = 0; i < 4; i++)
             {
-                _level[i, 15] = true;
-                _level[31 - i, 15] = true;
+                _level[i, 15] = LevelTile.Tile;
+                _level[31 - i, 15] = LevelTile.Tile;
             }
             for (int i = 0; i < 16; i++)
             {
-                _level[8 + i, 14] = true;
+                _level[8 + i, 14] = LevelTile.Tile;
             }
 
             for (int i = 0; i < 14; i++)
             {
-                _level[i, 8] = true;
-                _level[31 - i, 8] = true;
+                _level[i, 8] = LevelTile.Tile;
+                _level[31 - i, 8] = LevelTile.Tile;
             }
             for (int i = 0; i < 32; i++)
             {
-                _level[i, 26] = true;
-                _level[i, 27] = true;
+                _level[i, 26] = LevelTile.Tile;
+                _level[i, 27] = LevelTile.Tile;
             }
             _tiles = new SpriteSheet(Content, "tiles", 8, 8);
             _bumpTiles = new SpriteSheet(Content, "tile-bump", 8, 16);
@@ -199,10 +235,12 @@ namespace MarioBros2023
 
             _marioHeadSprite = Content.Load<Texture2D>("mario-head");
 
-            _mario = new Player(_marioSpriteSheet, _level, 2, _pootSteps, _skid, _jump, _hit, _death);
+            _mario = new Player(_marioSpriteSheet, _level, 2, _pootSteps, _skidSounds, _jumpSounds, _hitSound, _deathSound);
             _mario.CanBump = true;
 
             _titleSprite = Content.Load<Texture2D>("title-screen");
+
+            _powSprite = new SpriteSheet(Content, "pow", 16, 16);
 
             _levels.Add(Level.CreateLevel(0));
             _levels.Add(Level.CreateLevel(1));
@@ -212,6 +250,7 @@ namespace MarioBros2023
         {
             _mario.ResetLives(2);
             _currentLevelIndex = 0;
+            InitPOW();
             _currentJingle = _startGameJingle;
             _gameStateMachine.SetState(STATE_LEVEL_START);
         }
@@ -239,6 +278,8 @@ namespace MarioBros2023
             SimpleControls.GetStates();
 
             _gameStateMachine.Update(deltaTime);
+
+            CameraShake.Update(deltaTime);
 
             base.Update(gameTime);
         }
@@ -328,10 +369,15 @@ namespace MarioBros2023
             }
         }
 
+        private void GameOverEnter()
+        {
+            _gameOverJingle.Play();
+            _stateChangeTimer = 0;
+        }
         private void GameOverUpdate(float deltaTime)
         {
             _stateChangeTimer += deltaTime;
-            if (_stateChangeTimer > 5f)
+            if (_stateChangeTimer > _gameOverJingle.Duration.TotalSeconds)
             {
                 _gameStateMachine.SetState(STATE_TITLE);
             }
@@ -419,6 +465,8 @@ namespace MarioBros2023
             _mario.MoveTo(new Vector2(RESPAWN_PLATFORM_X + 8, RESPAWN_PLATFORM_START_Y));
             _mario.LookTo(new Vector2(1, 0));
             _mario.Respawn();
+
+            _respawnSound.Play();
         }
 
         private void UpdatePlatform(float deltaTime)
@@ -462,7 +510,14 @@ namespace MarioBros2023
         private void StartBump(PlatformCharacter character)
         {
             _bumps.Add(new Bump(_bumpTiles, _currentLevel.TileFrame, character));
-            BumpEnemy(character.PixelPositionX, (character.PixelPositionY - 20) / 8);
+            if (IsPow(character.PixelPositionX / 8, (character.PixelPositionY - 20) / 8))
+            {
+                POW();
+            }
+            else
+            {
+                BumpEnemy(character.PixelPositionX, (character.PixelPositionY - 20) / 8);
+            }
         }
 
         private void UpdateBumps(float deltaTime)
@@ -498,15 +553,15 @@ namespace MarioBros2023
                 {
                     if (positionX <= enemy.PixelPositionX - 4 && positionX >= enemy.PixelPositionX - 12)
                     {
-                        enemy.Bump(1);
+                        enemy.Bump(1, true);
                     }
                     if (positionX >= enemy.PixelPositionX + 4 && positionX <= enemy.PixelPositionX + 12)
                     {
-                        enemy.Bump(-1);
+                        enemy.Bump(-1, true);
                     }
                     if (positionX >= enemy.PixelPositionX - 4 && positionX <= enemy.PixelPositionX + 4)
                     {
-                        enemy.Bump(0);
+                        enemy.Bump(0, true);
                     }
                 }
             }
@@ -597,7 +652,7 @@ namespace MarioBros2023
             {
                 for (int y = 0; y < 26; y++)
                 {
-                    if (_level[x, y])
+                    if (_level[x, y] == LevelTile.Tile)
                     {
                         bool bumped = false;
                         foreach (Bump bump in _bumps)
@@ -615,6 +670,11 @@ namespace MarioBros2023
                         }
                     }
                 }
+            }
+
+            if (_powLeft > 0)
+            {
+                _powSprite.DrawFrame(3 - _powLeft, spriteBatch, new Vector2(120, 160), 0, Vector2.One, Color.White);
             }
         }
 
@@ -639,7 +699,7 @@ namespace MarioBros2023
 
         private void SpawnTurtle(int side)
         {
-            Enemy newTurtle = new Enemy(_turtleSpriteSheet, _level);
+            Enemy newTurtle = new Enemy(_turtleSpriteSheet, _level, _enemySpawn, _enemyFlip);
 
             newTurtle.SetBaseSpeed(ConfigManager.GetConfig("TURTLE_SPEED", 25f));
             newTurtle.Enter(side);
@@ -651,6 +711,44 @@ namespace MarioBros2023
             _splashX = x;
             _splashCurrentFrame = 0;
             _splash.Play();
+        }
+
+        private void InitPOW()
+        {
+            _powLeft = _powSprite.FrameCount;
+            _level[15, 20] = LevelTile.Pow;
+            _level[16, 20] = LevelTile.Pow;
+        }
+
+        private bool IsPow(int gridX, int gridY)
+        {
+            return _level[gridX, gridY] == LevelTile.Pow;
+        }
+
+        private void ClearPOW()
+        {
+            _level[15, 20] = LevelTile.Empty;
+            _level[16, 20] = LevelTile.Empty;
+        }
+
+        private void POW()
+        {
+            foreach(Enemy enemy in _enemies)
+            {
+                if (!enemy.IsFalling) // TODO: allow if next to landing or all the way during the POW duration
+                {
+                    enemy.Bump(0, false);
+                }
+            }
+
+            CameraShake.Shake(new Vector2(0, -1), 32, MathF.PI/0.25f, 0.25f);
+            _powSound.Play();
+
+            _powLeft--;
+            if (_powLeft == 0 )
+            {
+                ClearPOW();
+            }
         }
     }
 }
