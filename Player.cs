@@ -115,7 +115,7 @@ namespace MarioBros2023
                 }
                 else
                 {
-                    SetAnimation("Run");
+                    SetAnimation(WalkAnimationName);
                 }
             }
             else if (SimpleControls.IsRightDown(SimpleControls.PlayerNumber.Player1))
@@ -134,7 +134,7 @@ namespace MarioBros2023
                 }
                 else
                 {
-                    SetAnimation("Run");
+                    SetAnimation(WalkAnimationName);
                 }
             }
             if (SimpleControls.IsADown(SimpleControls.PlayerNumber.Player1))

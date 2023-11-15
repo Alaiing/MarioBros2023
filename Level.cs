@@ -72,6 +72,19 @@ namespace MarioBros2023
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 3f);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 6f);
                     break;
+
+                case 2:
+                    newLevel = new Level(3);
+                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 0f);
+                    break;
+
+                case 3:
+                    newLevel = new Level(3);
+                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 0f);
+                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 3f);
+                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 6f);
+                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 3f);
+                    break;
             }
             return newLevel;
         }

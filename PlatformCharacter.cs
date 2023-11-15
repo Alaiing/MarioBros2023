@@ -21,6 +21,8 @@ namespace MarioBros2023
         protected const string STATE_DYING = "Dying";
         protected const string STATE_DEAD = "Dead";
 
+        public virtual string WalkAnimationName => "Run";
+
         public bool IsFalling => _stateMachine.CurrentState == STATE_FALL;
         private float _jumpTimer;
         private float _jumpStartingY;
@@ -171,7 +173,7 @@ namespace MarioBros2023
             SetState(STATE_FALL);
         }
 
-        public void Bump(int direction, bool withSound)
+        public virtual void Bump(int direction, bool withSound)
         {
             _isFlipped = !_isFlipped;
             if (_isFlipped)
@@ -205,10 +207,9 @@ namespace MarioBros2023
                 }
             }
             Jump(0.25f, 15);
-            SetState(STATE_JUMP);
         }
 
-        public void Kill(int direction = 0)
+        public virtual void Kill(int direction = 0)
         {
             if (direction != 0)
             {
@@ -260,7 +261,7 @@ namespace MarioBros2023
 
         protected virtual void WalkEnter()
         {
-            SetAnimation("Run");
+            SetAnimation(WalkAnimationName);
         }
         protected virtual void WalkExit() { }
 
@@ -352,9 +353,7 @@ namespace MarioBros2023
             _flipTimer += deltaTime;
             if (_flipTimer > _flippedDuration)
             {
-                SetSpeed(1f);
-                SetAnimationSpeed(1f);
-                SetState(STATE_WALK);
+                Recover();
             }
             else
             {
@@ -364,6 +363,13 @@ namespace MarioBros2023
                 }
                 Animate(deltaTime);
             }
+        }
+
+        protected virtual void Recover()
+        {
+            SetSpeed(1f);
+            SetAnimationSpeed(1f);
+            SetState(STATE_WALK);
         }
 
         protected virtual void DyingEnter()

@@ -87,7 +87,7 @@ namespace Oudidon
 
         public void DrawAnimationFrame(string animationName, int frameIndex, SpriteBatch spriteBatch, Vector2 position, float rotation, Vector2 scale, Color color)
 		{
-			if (_animations.TryGetValue(animationName, out Animation animation) && frameIndex < animation.FrameCount)
+			if (_animations.TryGetValue(animationName, out Animation animation) /*&& frameIndex < animation.FrameCount*/)
 			{
 				DrawFrame(animation.startingFrame + frameIndex, spriteBatch, position, rotation, scale, color);
 			}
@@ -95,18 +95,21 @@ namespace Oudidon
 
 		public void DrawFrame(int frameIndex, SpriteBatch spriteBatch, Vector2 position, float rotation, Vector2 scale, Color color)
 		{
-			SpriteEffects spriteEffects = SpriteEffects.None;
-			if (scale.X < 0)
+			if (frameIndex < allFrames.Length)
 			{
-				spriteEffects |= SpriteEffects.FlipHorizontally;
-				scale.X = -scale.X;
+				SpriteEffects spriteEffects = SpriteEffects.None;
+				if (scale.X < 0)
+				{
+					spriteEffects |= SpriteEffects.FlipHorizontally;
+					scale.X = -scale.X;
+				}
+				if (scale.Y < 0)
+				{
+					spriteEffects |= SpriteEffects.FlipVertically;
+					scale.Y = -scale.Y;
+				}
+				spriteBatch.Draw(_texture, position, allFrames[frameIndex], color, rotation, _spritePivot, scale, spriteEffects, 0);
 			}
-            if (scale.Y < 0)
-            {
-				spriteEffects |= SpriteEffects.FlipVertically;
-				scale.Y = -scale.Y;
-            }
-            spriteBatch.Draw(_texture, position, allFrames[frameIndex], color, rotation, _spritePivot, scale, spriteEffects, 0);
         }
     }
 }

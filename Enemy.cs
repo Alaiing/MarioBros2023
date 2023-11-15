@@ -32,12 +32,16 @@ namespace MarioBros2023
         public bool IsEntering => _stateMachine.CurrentState == STATE_ENTERING;
 
         private int _enterExitSide;
+        public int SpawnSide => _enterExitSide;
 
         private SoundEffectInstance _spawnSound;
 
-        public Enemy(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect spawnSound, SoundEffect bumpSound) : base(spriteSheet, level, bumpSound) 
-        { 
-            _spawnSound = spawnSound.CreateInstance();
+        protected int _phase;
+        protected override float CurrentFrame => base.CurrentFrame + _phase * 8;
+
+        public Enemy(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect spawnSound, SoundEffect bumpSound) : base(spriteSheet, level, bumpSound)
+        {
+            _spawnSound = spawnSound?.CreateInstance();
         }
 
         protected override void InitStateMachine()
@@ -45,6 +49,28 @@ namespace MarioBros2023
             base.InitStateMachine();
             _stateMachine.AddState(STATE_EXITING, OnEnter: ExitEnter, OnExit: ExitExit, OnUpdate: ExitUpdate);
             _stateMachine.AddState(STATE_ENTERING, OnEnter: EnterEnter, OnExit: EnterExit, OnUpdate: EnterUpdate);
+        }
+
+        public void IncreasePhase()
+        {
+            if (_phase < 2)
+            {
+                _phase = _phase + 1;
+                SetBaseSpeed(_baseSpeed * 1.25f);
+                SetAnimationSpeed(_animationSpeed * 1.5f);
+            }
+        }
+
+        public void ToMaxPhase()
+        {
+            IncreasePhase();
+            IncreasePhase();
+        }
+
+        protected override void Recover()
+        {
+            base.Recover();
+            IncreasePhase();
         }
 
         public void Enter(int side)
@@ -71,7 +97,7 @@ namespace MarioBros2023
         {
             IgnorePlatforms = true;
             _enterExitTime = 0;
-            SetAnimation("Run");
+            SetAnimation(WalkAnimationName);
             MoveTo(new Vector2(Position.X, EXIT_Y));
         }
 
@@ -99,12 +125,12 @@ namespace MarioBros2023
             LookTo(new Vector2(-_enterExitSide, 0));
             float enterX = _enterExitSide > 0 ? RIGHT_SPAWN_X : LEFT_SPAWN_X;
             MoveTo(new Vector2(enterX, SPAWN_Y));
-            SetAnimation("Run");
+            SetAnimation(WalkAnimationName);
         }
         private void EnterExit()
         {
             IgnorePlatforms = false;
-            _spawnSound.Play();
+            _spawnSound?.Play();
         }
         private void EnterUpdate(float deltaTime)
         {
@@ -114,7 +140,6 @@ namespace MarioBros2023
 
             if (_enterExitTime > SPAWN_DISTANCE / CurrentSpeed)
             {
-                Debug.WriteLine($"Enter exit {_enterExitTime}");
                 SetState(STATE_WALK);
             }
         }
@@ -122,7 +147,7 @@ namespace MarioBros2023
         protected override void DyingEnter()
         {
             base.DyingEnter();
-            EventsManager.FireEvent<Enemy>("ENEMY_DEATH_SOUND", this);
+            EventsManager.FireEvent<Enemy>("ENEMY_DYING", this);
         }
     }
 }

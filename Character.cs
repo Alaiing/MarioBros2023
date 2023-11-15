@@ -19,6 +19,7 @@ namespace Oudidon
         public int PixelPositionX => (int)MathF.Floor(_position.X);
         public int PixelPositionY => (int)MathF.Floor(_position.Y);
         private float _currentFrame;
+        protected virtual float CurrentFrame => _currentFrame;
         private Color _color;
         public Color Color => _color;
 
@@ -33,7 +34,7 @@ namespace Oudidon
         protected float _speed;
         public float CurrentSpeed => _speed * _baseSpeed;
         private float _moveStep;
-        private float _animationSpeed;
+        protected float _animationSpeed;
         private string _currentAnimation;
         private int _currentAnimationFrameCount;
         private float _currentAnimationSpeed;
@@ -176,7 +177,7 @@ namespace Oudidon
         {
             if(Visible)
             {
-                _spriteSheet.DrawAnimationFrame(_currentAnimation, (int)MathF.Floor(_currentFrame), spriteBatch, new Vector2(PixelPositionX + displayOffsetX, PixelPositionY + displayOffsetY), _currentRotation, _currentScale, _color);
+                _spriteSheet.DrawAnimationFrame(_currentAnimation, (int)MathF.Floor(CurrentFrame), spriteBatch, new Vector2(PixelPositionX + displayOffsetX, PixelPositionY + displayOffsetY), _currentRotation, _currentScale, _color);
             }
         }
     }

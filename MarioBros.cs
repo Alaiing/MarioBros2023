@@ -33,7 +33,10 @@ namespace MarioBros2023
         private Player _mario;
 
         private SpriteSheet _turtleSpriteSheet;
+        private SpriteSheet _crabSpriteSheet;
         private readonly List<Enemy> _enemies = new List<Enemy>();
+
+        private SpriteSheet _coinSpriteSheet;
 
         private SpriteSheet _splashSpriteSheet;
         private float _splashCurrentFrame;
@@ -94,7 +97,7 @@ namespace MarioBros2023
         private SoundEffect _endLevelJingle;
         private SoundEffect _gameOverJingle;
 
-        private SoundEffect _enemySpawn;
+        private SoundEffect _enemySpawnSpound;
         private SoundEffect _enemyFlip;
         private SoundEffect _enemyDie;
 
@@ -120,7 +123,7 @@ namespace MarioBros2023
             EventsManager.ListenTo<PlatformCharacter>("BUMP", StartBump);
             EventsManager.ListenTo<PlatformCharacter>("DEATH", OnCharacterDeath);
             EventsManager.ListenTo<Enemy.EnemyType>("SPAWN_ENEMY", OnEnemySpawn);
-            EventsManager.ListenTo<Enemy>("ENEMY_DEATH_SOUND", OnEnemyDeathSound);
+            EventsManager.ListenTo<Enemy>("ENEMY_DYING", OnEnemyDying);
 
             _gameStateMachine = new SimpleStateMachine();
             _gameStateMachine.AddState(STATE_TITLE, OnEnter: null, OnExit: null, OnUpdate: TitleUpdate);
@@ -135,7 +138,7 @@ namespace MarioBros2023
             base.Initialize();
         }
 
-        private void OnEnemyDeathSound(Enemy enemy)
+        private void OnEnemyDying(Enemy enemy)
         {
             if (_killedEnemies == _currentLevel.EnemyCount - 1)
             {
@@ -144,6 +147,11 @@ namespace MarioBros2023
             else
             {
                 _enemyDie.Play();
+                if (_killedEnemies == _currentLevel.EnemyCount - 2)
+                {
+                    _enemies.Find(e => e != enemy).ToMaxPhase();
+                }
+
             }
         }
 
@@ -169,7 +177,7 @@ namespace MarioBros2023
 
             _splash = Content.Load<SoundEffect>("plouf");
 
-            _enemySpawn = Content.Load<SoundEffect>("pehou");
+            _enemySpawnSpound = Content.Load<SoundEffect>("pehou");
             _enemyFlip = Content.Load<SoundEffect>("beuha");
             _enemyDie = Content.Load<SoundEffect>("grlgrlgrl");
 
@@ -193,6 +201,16 @@ namespace MarioBros2023
             _turtleSpriteSheet.RegisterAnimation("Run", 0, 3, 20f);
             _turtleSpriteSheet.RegisterAnimation("Turn", 4, 5, 4f);
             _turtleSpriteSheet.RegisterAnimation("OnBack", 6, 7, 1f);
+
+            _crabSpriteSheet = new SpriteSheet(Content, "crab", 16, 16, 8, 16);
+            _crabSpriteSheet.RegisterAnimation("Run", 0, 3, 20f);
+            _crabSpriteSheet.RegisterAnimation("RunAngry", 4, 7, 20f);
+            _crabSpriteSheet.RegisterAnimation("Turn", 8, 9, 4f);
+            _crabSpriteSheet.RegisterAnimation("OnBack", 10, 11, 1f);
+
+            _coinSpriteSheet = new SpriteSheet(Content, "coin", 16, 16, 8, 16);
+            _coinSpriteSheet.RegisterAnimation("Rotate", 0, 4, 20f);
+            _coinSpriteSheet.RegisterAnimation("Collect", 5, 9, 10f);
 
             _splashSpriteSheet = new SpriteSheet(Content, "splash", 16, 16, 8, 16);
             _turtleSpriteSheet.RegisterAnimation("Splash", 0, 2, 1f / 3f);
@@ -326,7 +344,7 @@ namespace MarioBros2023
                         if (Math.Abs(_mario.PixelPositionX - enemy.PixelPositionX) < MARIO_COLLISION_WIDTH / 2 + ENEMY_COLLISION_WIDTH / 2
                             && (relativeYPosition >= 0 && relativeYPosition < MARIO_COLLISION_HEIGHT || relativeYPosition < 0 && -relativeYPosition < ENEMY_COLLISION_HEIGHT))
                         {
-                            if (enemy.IsFlipped)
+                            if (enemy is Coin || enemy.IsFlipped)
                             {
                                 enemy.Kill(MathF.Sign(enemy.PixelPositionX - _mario.PixelPositionX));
                             }
@@ -354,12 +372,15 @@ namespace MarioBros2023
                                 if (relativePositionX != 0 && Math.Abs(relativePositionX) < BETWEEN_ENEMY_COLLISION_WIDTH && MathF.Sign(relativePositionX) == MathF.Sign(enemy.MoveDirection.X))
                                 {
                                     enemy.LookTo(-enemy.MoveDirection);
-                                    enemy.SetSpeed(0);
-                                    enemy.SetAnimation("Turn", onAnimationEnd: () =>
+                                    if (enemy is not Coin)
                                     {
-                                        enemy.SetSpeed(1f);
-                                        enemy.SetAnimation("Run");
-                                    });
+                                        enemy.SetSpeed(0);
+                                        enemy.SetAnimation("Turn", onAnimationEnd: () =>
+                                        {
+                                            enemy.SetSpeed(1f);
+                                            enemy.SetAnimation(enemy.WalkAnimationName);
+                                        });
+                                    }
                                 }
                             }
 
@@ -428,25 +449,38 @@ namespace MarioBros2023
 
         private void OnCharacterDeath(PlatformCharacter character)
         {
-            Splash(character.PixelPositionX);
-            if (character is Enemy enemy)
+            if (character is Coin coin)
             {
-                _enemies.Remove(enemy);
-                _killedEnemies++;
-                if (_killedEnemies == _currentLevel.EnemyCount)
-                {
-                    _gameStateMachine.SetState(STATE_LEVEL_CLEARED);
-                }
+                _enemies.Remove(coin);
+                // TODO add score
             }
-            else if (character is Player player)
+            else
             {
-                if (player.LivesLeft >= 0)
+                Splash(character.PixelPositionX);
+
+                if (character is Enemy enemy)
                 {
-                    Respawn();
+                    _enemies.Remove(enemy);
+                    _killedEnemies++;
+                    if (_killedEnemies == _currentLevel.EnemyCount)
+                    {
+                        _gameStateMachine.SetState(STATE_LEVEL_CLEARED);
+                    }
+                    else
+                    {
+                        SpawnCoin(enemy.SpawnSide);
+                    }
                 }
-                else
+                else if (character is Player player)
                 {
-                    GameOver();
+                    if (player.LivesLeft >= 0)
+                    {
+                        Respawn();
+                    }
+                    else
+                    {
+                        GameOver();
+                    }
                 }
             }
         }
@@ -688,22 +722,35 @@ namespace MarioBros2023
 
         private void OnEnemySpawn(Enemy.EnemyType type)
         {
+            int side = _random.Next(0, 2) * 2 - 1;
             switch (type)
             {
                 default:
                 case Enemy.EnemyType.Turtle:
-                    SpawnTurtle(_random.Next(0, 2) * 2 - 1);
+                    SpawnTurtle(side);
+                    break;
+                case Enemy.EnemyType.Crab:
+                    SpawnCrab(side);
                     break;
             }
         }
 
         private void SpawnTurtle(int side)
         {
-            Enemy newTurtle = new Enemy(_turtleSpriteSheet, _level, _enemySpawn, _enemyFlip);
+            Enemy newTurtle = new Enemy(_turtleSpriteSheet, _level, _enemySpawnSpound, _enemyFlip);
 
             newTurtle.SetBaseSpeed(ConfigManager.GetConfig("TURTLE_SPEED", 25f));
             newTurtle.Enter(side);
             _enemies.Add(newTurtle);
+        }
+
+        private void SpawnCrab(int side)
+        {
+            Enemy newCrab = new Crab(_crabSpriteSheet, _level, _enemySpawnSpound, _enemyFlip);
+
+            newCrab.SetBaseSpeed(ConfigManager.GetConfig("CRAB_SPEED", 30f));
+            newCrab.Enter(side);
+            _enemies.Add(newCrab);
         }
 
         private void Splash(int x)
@@ -733,7 +780,7 @@ namespace MarioBros2023
 
         private void POW()
         {
-            foreach(Enemy enemy in _enemies)
+            foreach (Enemy enemy in _enemies)
             {
                 if (!enemy.IsFalling) // TODO: allow if next to landing or all the way during the POW duration
                 {
@@ -741,14 +788,25 @@ namespace MarioBros2023
                 }
             }
 
-            CameraShake.Shake(new Vector2(0, -1), 32, MathF.PI/0.25f, 0.25f);
+            CameraShake.Shake(new Vector2(0, -1), 32, MathF.PI / 0.25f, 0.25f);
             _powSound.Play();
 
             _powLeft--;
-            if (_powLeft == 0 )
+            if (_powLeft == 0)
             {
                 ClearPOW();
             }
         }
+
+        #region Coins
+        private void SpawnCoin(int side)
+        {
+            Coin newCoin = new Coin(_coinSpriteSheet, _level, _enemySpawnSpound, null);
+
+            newCoin.SetBaseSpeed(ConfigManager.GetConfig("COIN_SPEED", 50f));
+            newCoin.Enter(side);
+            _enemies.Add(newCoin);
+        }
+        #endregion
     }
 }
