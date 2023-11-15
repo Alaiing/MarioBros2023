@@ -87,6 +87,7 @@ namespace MarioBros2023
             IsDying = false;
             _currentSpeed = 0;
             _currentPootStepIndex = 0;
+            SetSpeed(1f);
             Walk();
         }
 
@@ -107,7 +108,7 @@ namespace MarioBros2023
                 {
                     _currentSpeed = -_maxSpeed;
                 }
-                if (_currentSpeed >= 0)
+                if (_currentSpeed >= 0 && CanSkid())
                 {
                     SetAnimation("Slip");
                     _skid.Play();
@@ -126,7 +127,7 @@ namespace MarioBros2023
                     _currentSpeed = _maxSpeed;
                 }
 
-                if (_currentSpeed <= 0)
+                if (_currentSpeed <= 0 && CanSkid())
                 {
                     SetAnimation("Slip");
                     _skid.Play();
@@ -147,8 +148,11 @@ namespace MarioBros2023
             {
                 if (_currentSpeed != 0)
                 {
-                    SetAnimation("Slip");
-                    _skid.Play();
+                    if (CanSkid())
+                    {
+                        SetAnimation("Slip");
+                        _skid.Play();
+                    }
                     float previousSpeed = _currentSpeed;
                     _currentSpeed += -MathF.Sign(_currentSpeed) * _acceleration * deltaTime;
                     if (previousSpeed * _currentSpeed < 0)
@@ -173,6 +177,11 @@ namespace MarioBros2023
 
             SetBaseSpeed(MathF.Abs(_currentSpeed));
             base.WalkUpdate(deltaTime);
+        }
+
+        private bool CanSkid()
+        {
+            return MathF.Abs(_currentSpeed) >= _maxSpeed;
         }
 
         private float _dyingTimer;

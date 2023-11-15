@@ -71,7 +71,7 @@ namespace MarioBros2023
         {
             IgnorePlatforms = true;
             _enterExitTime = 0;
-            SetAnimation("Walk");
+            SetAnimation("Run");
             MoveTo(new Vector2(Position.X, EXIT_Y));
         }
 
@@ -99,7 +99,7 @@ namespace MarioBros2023
             LookTo(new Vector2(-_enterExitSide, 0));
             float enterX = _enterExitSide > 0 ? RIGHT_SPAWN_X : LEFT_SPAWN_X;
             MoveTo(new Vector2(enterX, SPAWN_Y));
-            SetAnimation("Walk");
+            SetAnimation("Run");
         }
         private void EnterExit()
         {

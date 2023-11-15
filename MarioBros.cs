@@ -190,7 +190,7 @@ namespace MarioBros2023
             _marioSpriteSheet.RegisterAnimation("Flatten", 8, 9, 1f);
 
             _turtleSpriteSheet = new SpriteSheet(Content, "turtle", 16, 16, 8, 16);
-            _turtleSpriteSheet.RegisterAnimation("Walk", 0, 3, 20f);
+            _turtleSpriteSheet.RegisterAnimation("Run", 0, 3, 20f);
             _turtleSpriteSheet.RegisterAnimation("Turn", 4, 5, 4f);
             _turtleSpriteSheet.RegisterAnimation("OnBack", 6, 7, 1f);
 
@@ -277,6 +277,8 @@ namespace MarioBros2023
 
             SimpleControls.GetStates();
 
+            UpdateBumps(deltaTime);
+            UpdateSplash(deltaTime);
             _gameStateMachine.Update(deltaTime);
 
             CameraShake.Update(deltaTime);
@@ -296,8 +298,6 @@ namespace MarioBros2023
 
         private void GameplayUpdate(float deltaTime)
         {
-            UpdateBumps(deltaTime);
-            UpdateSplash(deltaTime);
             UpdatePlatform(deltaTime);
             _currentLevel.Update(deltaTime);
 
@@ -358,7 +358,7 @@ namespace MarioBros2023
                                     enemy.SetAnimation("Turn", onAnimationEnd: () =>
                                     {
                                         enemy.SetSpeed(1f);
-                                        enemy.SetAnimation("Walk");
+                                        enemy.SetAnimation("Run");
                                     });
                                 }
                             }
@@ -407,7 +407,7 @@ namespace MarioBros2023
         private void LevelClearedUpdate(float deltaTime)
         {
             _stateChangeTimer += deltaTime;
-            if (_stateChangeTimer > 5f)
+            if (_stateChangeTimer > _endLevelJingle.Duration.TotalSeconds)
             {
                 _currentLevelIndex++;
                 if (_currentLevelIndex < _levels.Count)
