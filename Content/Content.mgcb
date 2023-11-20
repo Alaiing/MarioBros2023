@@ -19,6 +19,12 @@
 /processorParam:Quality=Best
 /build:beuha.wav
 
+#begin brruui.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:brruui.wav
+
 #begin coin.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -78,6 +84,18 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:doudidou.wav
+
+#begin fireball-red.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:fireball-red.png
 
 #begin flbflbflb.wav
 /importer:WavImporter
@@ -156,6 +174,12 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:pehou.wav
+
+#begin peuing.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:peuing.wav
 
 #begin pili.wav
 /importer:WavImporter
@@ -246,6 +270,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:prefixes.png
+
+#begin puddin.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:puddin.wav
 
 #begin respawn.png
 /importer:TextureImporter

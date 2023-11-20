@@ -118,35 +118,38 @@ namespace Oudidon
             _position += translation;
         }
 
-        public void LookTo(Vector2 direction)
+        public void LookTo(Vector2 direction, bool rotate = true)
         {
             _moveDirection = direction;
-            if (direction.X != 0)
+            if (rotate)
             {
-                _orientation.X = direction.X;
-                _currentScale.X = direction.X;
-            }
-            if (direction.Y != 0)
-            {
+                if (direction.X != 0)
+                {
+                    _orientation.X = direction.X;
+                    _currentScale.X = direction.X;
+                }
+                if (direction.Y != 0)
+                {
+                    _orientation.Y = direction.Y;
+                    _currentScale.Y = -_orientation.X * _orientation.Y;
+                }
+                else
+                {
+                    _currentScale.Y = 1;
+                }
                 _orientation.Y = direction.Y;
-                _currentScale.Y = -_orientation.X * _orientation.Y;
+                _currentRotation = _orientation.X * _orientation.Y * MathF.PI / 2;
             }
-            else
-            {
-                _currentScale.Y = 1;
-            }
-            _orientation.Y = direction.Y;
-            _currentRotation = _orientation.X * _orientation.Y * MathF.PI / 2;
         }
 
         public virtual void Move(float deltaTime)
         {
-            _moveStep += deltaTime * CurrentSpeed;
-            if (_moveStep >= 1)
-            {
-                _position += _moveDirection;
-                _moveStep -= 1;
-            }
+            //_moveStep += deltaTime * CurrentSpeed;
+            //if (_moveStep >= 1)
+            //{
+                _position += _moveDirection * CurrentSpeed * deltaTime;
+                //_moveStep -= 1;
+            //}
         }
 
         public void Animate(float deltaTime)

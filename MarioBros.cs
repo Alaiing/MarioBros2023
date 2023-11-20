@@ -36,6 +36,8 @@ namespace MarioBros2023
         private SpriteSheet _crabSpriteSheet;
         private readonly List<Enemy> _enemies = new List<Enemy>();
 
+        private SpriteSheet _redFireballSpriteSheet;
+
         private SpriteSheet _coinSpriteSheet;
 
         private SpriteSheet _splashSpriteSheet;
@@ -106,6 +108,11 @@ namespace MarioBros2023
         private SoundEffect _enemyDie;
 
         private SoundEffect _powSound;
+
+        private SoundEffect _redFireballSound;
+
+        private SoundEffect _coinSpawnSound;
+        private SoundEffect _coinCollectSound;
 
         public MarioBros()
         {
@@ -201,6 +208,11 @@ namespace MarioBros2023
 
             _powSound = Content.Load<SoundEffect>("powpow");
 
+            _redFireballSound = Content.Load<SoundEffect>("brruui");
+
+            _coinSpawnSound = Content.Load<SoundEffect>("peuing");
+            _coinCollectSound = Content.Load<SoundEffect>("puddin");
+
             _marioSpriteSheet = new SpriteSheet(Content, "Mario", 16, 24, 8, 24);
             _marioSpriteSheet.RegisterAnimation("Idle", 0, 0, 0);
             _marioSpriteSheet.RegisterAnimation("Run", 1, 3, 30f);
@@ -224,6 +236,10 @@ namespace MarioBros2023
             _coinSpriteSheet = new SpriteSheet(Content, "coin", 16, 16, 8, 16);
             _coinSpriteSheet.RegisterAnimation("Rotate", 0, 4, 20f);
             _coinSpriteSheet.RegisterAnimation("Collect", 5, 9, 10f);
+
+            _redFireballSpriteSheet = new SpriteSheet(Content, "fireball-red", 8, 8, 4, 4);
+            _redFireballSpriteSheet.RegisterAnimation("Move", 0, 3, 20f);
+            _redFireballSpriteSheet.RegisterAnimation("Disappear", 4, 8, 8f);
 
             _splashSpriteSheet = new SpriteSheet(Content, "splash", 16, 16, 8, 16);
             _turtleSpriteSheet.RegisterAnimation("Splash", 0, 2, 1f / 3f);
@@ -301,6 +317,7 @@ namespace MarioBros2023
             _enemies.Clear();
 
             _killedEnemies = 0;
+            _redFireballSpawnTimer = 0;
             _currentJingle.Play();
         }
 
@@ -336,6 +353,7 @@ namespace MarioBros2023
         {
             UpdatePlatform(deltaTime);
             UpdatePopScores(deltaTime);
+            UpdateRedFireball(deltaTime);
             _currentLevel.Update(deltaTime);
 
             _mario.Update(deltaTime);
@@ -721,6 +739,8 @@ namespace MarioBros2023
             _mario.Draw(_spriteBatch, -SCREEN_WIDTH, 0);
 
             DrawSplash(_spriteBatch);
+
+            DrawRedFireball(_spriteBatch);
         }
 
         private void DrawScore(SpriteBatch spriteBatch)
@@ -873,7 +893,7 @@ namespace MarioBros2023
         private void SpawnCoin(int side)
         {
             spawnCount++;
-            Coin newCoin = new Coin(_coinSpriteSheet, _level, _enemySpawnSpound, null);
+            Coin newCoin = new Coin(_coinSpriteSheet, _level, _coinSpawnSound, _coinCollectSound);
             newCoin.name = $"Coin {spawnCount}";
             newCoin.SetBaseSpeed(ConfigManager.GetConfig("COIN_SPEED", 50f));
             newCoin.Enter(side);
@@ -899,7 +919,7 @@ namespace MarioBros2023
                 _highscore = player.Score;
             }
             Vector2 scorePosition = position - new Vector2(0, _marioSpriteSheet.SpriteHeight);
-            switch(score)
+            switch (score)
             {
                 case 800:
                     _popScores.Add(new PopScore { spriteFrame = 0, position = scorePosition, timer = 0 });
@@ -918,7 +938,7 @@ namespace MarioBros2023
 
         private void UpdatePopScores(float deltaTime)
         {
-            for(int i = 0; i < _popScores.Count; i++)
+            for (int i = 0; i < _popScores.Count; i++)
             {
                 _popScores[i].timer += deltaTime;
                 if (_popScores[i].timer > 2f)
@@ -930,9 +950,174 @@ namespace MarioBros2023
 
         private void DrawPopScores(SpriteBatch spriteBatch)
         {
-            foreach(PopScore score in _popScores)
+            foreach (PopScore score in _popScores)
             {
                 _scorePopup.DrawFrame(score.spriteFrame, spriteBatch, score.position, 0, Vector2.One, _marioScoreColor);
+            }
+        }
+        #endregion
+
+        #region Fireballs
+        private Character _redFireball;
+        private bool _exploding;
+        private float _redFireballSpawnTimer;
+
+        private void SpawnRedFireball()
+        {
+            _redFireball ??= new Character(_redFireballSpriteSheet);
+            _redFireball.MoveTo(new Vector2(81, 31));
+            _redFireball.SetAnimation("Move");
+            _redFireball.LookTo(new Vector2(_random.Next(0, 2) * 2 - 1, _random.Next(0, 2) * 2 - 1), rotate: false);
+            _redFireball.Visible = true;
+            _exploding = false;
+        }
+
+        private void KillRedFireBall()
+        {
+            _redFireball.Visible = false;
+            _redFireballSpawnTimer = 0;
+        }
+
+        private void UpdateRedFireball(float deltaTime)
+        {
+            if (_redFireball != null && _redFireball.Visible)
+            {
+                if (!_exploding)
+                {
+                    Vector2 lookTo = _redFireball.MoveDirection;
+                    bool hasBumped = false;
+                    if (_redFireball.Position.X - _redFireball.SpriteSheet.LeftMargin <= 0)
+                    {
+                        hasBumped = BumpLeft(ref lookTo);
+                    }
+                    if (_redFireball.Position.X + _redFireball.SpriteSheet.RightMargin > SCREEN_WIDTH)
+                    {
+                        hasBumped = BumpRight(ref lookTo);
+                    }
+
+                    if (_redFireball.Position.Y - _redFireball.SpriteSheet.TopMargin <= 0)
+                    {
+                        hasBumped = BumpUp(ref lookTo);
+                    }
+                    if (_redFireball.Position.Y + _redFireball.SpriteSheet.BottomMargin >= SCREEN_HEIGHT)
+                    {
+                        hasBumped = BumpDown(ref lookTo);
+                    }
+
+                    // Test platform collision
+                    int centerGridPositionX = (int)MathF.Floor(_redFireball.Position.X / 8);
+                    int lowerGridPositionY = (int)MathF.Floor((_redFireball.Position.Y + _redFireballSpriteSheet.BottomMargin) / 8);
+                    int upperGridPositionY = (int)MathF.Floor((_redFireball.Position.Y - _redFireballSpriteSheet.TopMargin) / 8);
+                    if (lowerGridPositionY < 30 && _level[centerGridPositionX, lowerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpDown(ref lookTo);
+                    }
+                    if (upperGridPositionY >= 0 && _level[centerGridPositionX, upperGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpUp(ref lookTo);
+                    }
+
+                    int centerGridPositionY = (int)MathF.Floor(_redFireball.Position.Y / 8);
+                    int leftGridPositionX = (int)MathF.Floor((_redFireball.Position.X - _redFireballSpriteSheet.LeftMargin) / 8);
+                    int rightGridPositionX = (int)MathF.Floor((_redFireball.Position.X + _redFireballSpriteSheet.RightMargin) / 8);
+                    if (leftGridPositionX >= 0 && _level[leftGridPositionX, centerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpLeft(ref lookTo);
+                    }
+                    if (rightGridPositionX < 32 && _level[rightGridPositionX, centerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpRight(ref lookTo);
+                    }
+
+                    if (hasBumped)
+                    {
+                        _redFireballSound.Play();
+                    }
+
+                    _redFireball.LookTo(lookTo);
+
+                    float newX = _redFireball.Position.X + _redFireball.MoveDirection.X * ConfigManager.GetConfig("MARIO_MAX_SPEED", 75) * deltaTime;
+                    float newY = _redFireball.Position.Y + _redFireball.MoveDirection.Y * (ConfigManager.GetConfig("MARIO_MAX_SPEED", 75) / 1) * deltaTime;
+                    _redFireball.MoveTo(new Vector2(newX, newY));
+
+                    TestRedFireballCollision(_mario);
+                }
+
+                _redFireball.Animate(deltaTime);
+            }
+            else
+            {
+                _redFireballSpawnTimer += deltaTime;
+                if (_redFireballSpawnTimer > ConfigManager.GetConfig("RED_FIREBALL_COOLDOWN", 60))
+                {
+                    SpawnRedFireball();
+                }
+            }
+        }
+
+        private bool BumpLeft(ref Vector2 lookTo)
+        {
+            bool hasBumped = false;
+            if (lookTo.X < 0)
+            {
+                hasBumped = true;
+            }
+            lookTo.X = 1;
+
+            return hasBumped;
+        }
+        private bool BumpRight(ref Vector2 lookTo)
+        {
+            bool hasBumped = false;
+            if (lookTo.X > 0)
+            {
+                hasBumped = true;
+            }
+            lookTo.X = -1;
+
+            return hasBumped;
+        }
+
+        private bool BumpUp(ref Vector2 lookTo)
+        {
+            bool hasBumped = false;
+            if (lookTo.Y < 0)
+            {
+                hasBumped = true;
+            }
+            lookTo.Y = 1;
+
+            return hasBumped;
+        }
+        private bool BumpDown(ref Vector2 lookTo)
+        {
+            bool hasBumped = false;
+            if (lookTo.Y > 0)
+            {
+                hasBumped = true;
+            }
+            lookTo.Y = -1;
+
+            return hasBumped;
+        }
+
+        private void DrawRedFireball(SpriteBatch spriteBatch)
+        {
+            if (_redFireball != null && _redFireball.Visible)
+            {
+                _redFireball.Draw(spriteBatch);
+            }
+        }
+
+        private void TestRedFireballCollision(Player player)
+        {
+            int relativePositionX = Math.Abs(player.PixelPositionX - _redFireball.PixelPositionX);
+            int relativePositionY = Math.Abs(player.PixelPositionY - MARIO_COLLISION_HEIGHT / 2 - _redFireball.PixelPositionY);
+            if (relativePositionX <= MARIO_COLLISION_WIDTH / 2 && relativePositionY <= MARIO_COLLISION_HEIGHT / 2)
+            {
+                KillMario();
+                _exploding = true;
+                _redFireball.SetAnimation("Disappear", KillRedFireBall);
             }
         }
         #endregion

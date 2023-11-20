@@ -34,11 +34,6 @@ namespace MarioBros2023
             }
         }
 
-        protected override void InitStateMachine()
-        {
-            base.InitStateMachine();
-        }
-
         public override void Bump(int direction, bool withSound)
         {
             Kill(0);
