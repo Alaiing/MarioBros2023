@@ -21,6 +21,12 @@ namespace MarioBros2023
         private int _lives;
         public int LivesLeft => _lives;
 
+        private int _score;
+        public int Score => _score;
+
+        private int _combo;
+        public float LastKillTimer;
+
         public bool IsMoving => _stateMachine.CurrentState == STATE_JUMP || _stateMachine.CurrentState == STATE_FALL || _currentSpeed != 0;
 
         private SoundEffectInstance[] _pootSteps;
@@ -50,6 +56,22 @@ namespace MarioBros2023
 
             _onAnimationFrame += OnFrameChange;
             _currentPootStepIndex = 0;
+        }
+
+        public override void Update(float deltaTime)
+        {
+            base.Update(deltaTime);
+            LastKillTimer += deltaTime;
+        }
+
+        public int GetKillCombo()
+        {
+            if (LastKillTimer < ConfigManager.GetConfig("COMBO_MIN_TIME", 0.5f))
+                _combo++;
+            else
+                _combo = 0;
+            LastKillTimer = 0;
+            return _combo;
         }
 
         private void OnFrameChange(int frameIndex)
@@ -108,7 +130,7 @@ namespace MarioBros2023
                 {
                     _currentSpeed = -_maxSpeed;
                 }
-                if (_currentSpeed >= 0 && CanSkid())
+                if (_currentSpeed >= 0)
                 {
                     SetAnimation("Slip");
                     _skid.Play();
@@ -127,7 +149,7 @@ namespace MarioBros2023
                     _currentSpeed = _maxSpeed;
                 }
 
-                if (_currentSpeed <= 0 && CanSkid())
+                if (_currentSpeed <= 0)
                 {
                     SetAnimation("Slip");
                     _skid.Play();
@@ -182,6 +204,16 @@ namespace MarioBros2023
         private bool CanSkid()
         {
             return MathF.Abs(_currentSpeed) >= _maxSpeed;
+        }
+
+        public void IncreaseScore(int scoreIncrease)
+        {
+            _score += scoreIncrease;
+        }
+
+        public void ResetScore()
+        {
+            _score = 0;
         }
 
         private float _dyingTimer;

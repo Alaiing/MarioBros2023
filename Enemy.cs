@@ -16,8 +16,8 @@ namespace MarioBros2023
         public enum EnemyType : int { Turtle = 0, Crab = 1, Fly = 2 }
 
         private const int SPAWN_Y = 44;
-        private const int LEFT_SPAWN_X = 44;
-        private const int RIGHT_SPAWN_X = 212;
+        private const int LEFT_SPAWN_X = 37;
+        private const int RIGHT_SPAWN_X = 219;
         private const int EXIT_Y = 199;
         private const int EXIT_MARGIN = 32;
         private const string STATE_EXITING = "Exiting";
@@ -25,8 +25,11 @@ namespace MarioBros2023
 
         private float _enterExitTime;
 
-        private const int SPAWN_DISTANCE = 9;
+        private const int SPAWN_DISTANCE = 16;
         private const int EXIT_DISTANCE = 16;
+
+        protected static Enemy LeftSpawnTaken;
+        protected static Enemy RightSpawnTaken;
 
         public bool IsExiting => _stateMachine.CurrentState == STATE_EXITING;
         public bool IsEntering => _stateMachine.CurrentState == STATE_ENTERING;
@@ -134,9 +137,17 @@ namespace MarioBros2023
         }
         private void EnterUpdate(float deltaTime)
         {
-            _enterExitTime += deltaTime;
-            Move(deltaTime);
-            Animate(deltaTime);
+            if (TakeSpawn(_enterExitSide))
+            {
+                _enterExitTime += deltaTime;
+                Move(deltaTime);
+                Animate(deltaTime);
+            }
+            else
+            {
+                Debug.WriteLine($"Waiting for spawn...");
+                return;
+            }
 
             if (_enterExitTime > SPAWN_DISTANCE / CurrentSpeed)
             {
@@ -148,6 +159,68 @@ namespace MarioBros2023
         {
             base.DyingEnter();
             EventsManager.FireEvent<Enemy>("ENEMY_DYING", this);
+        }
+
+        protected bool TakeSpawn(int direction)
+        {
+            if (direction > 0)
+            {
+                if (RightSpawnTaken == null || RightSpawnTaken == this)
+                {
+                    if (RightSpawnTaken == null)
+                    {
+                        RightSpawnTaken = this;
+                    }
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            if (direction < 0)
+            {
+                if (LeftSpawnTaken == null || LeftSpawnTaken == this)
+                {
+                    if (LeftSpawnTaken == null)
+                    {
+                        LeftSpawnTaken = this;
+                    }
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        protected void ReleaseSpawn(int direction)
+        {
+            if (direction > 0)
+            {
+                if (RightSpawnTaken == this)
+                {
+                    RightSpawnTaken = null;
+                }
+            }
+
+            if (direction < 0)
+            {
+                if (LeftSpawnTaken == this)
+                {
+                    LeftSpawnTaken = null;
+                }
+            }
+        }
+
+        protected override void FallExit()
+        {
+            base.FallExit();
+            ReleaseSpawn(_enterExitSide);
         }
     }
 }

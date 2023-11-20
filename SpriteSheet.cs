@@ -24,6 +24,9 @@ namespace Oudidon
 		private Vector2 _spritePivot;
 		public Vector2 SpritePivot => _spritePivot;
 
+        public int SpriteWidth { get; private set; }
+        public int SpriteHeight { get; private set; }
+
         public int LeftMargin { get; private set; }
         public int RightMargin { get; private set; }
         public int TopMargin { get; private set; }
@@ -37,6 +40,8 @@ namespace Oudidon
 			RightMargin = spriteWidth - spritePivotX;
 			TopMargin = spritePivotY;
 			BottomMargin = spriteHeight - spritePivotY;
+			SpriteWidth = spriteWidth;
+			SpriteHeight = spriteHeight;
 			InitFrames(spriteWidth, spriteHeight);
 		}
 

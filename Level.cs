@@ -75,7 +75,6 @@ namespace MarioBros2023
 
                 case 2:
                     newLevel = new Level(3);
-                    newLevel.AddSpawn(Enemy.EnemyType.Crab, 0f);
                     break;
 
                 case 3:
