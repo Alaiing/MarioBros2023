@@ -19,8 +19,12 @@ namespace MarioBros2023
         private float _acceleration;
         private float _maxSpeed;
 
+        public float MaxSpeed => _maxSpeed;
+
         private int _lives;
         public int LivesLeft => _lives;
+        private bool _extraLifeGained;
+        public bool ExtraLifeGained => _extraLifeGained;
 
         private int _score;
         public int Score => _score;
@@ -98,6 +102,12 @@ namespace MarioBros2023
         public void Respawn()
         {
             _stateMachine.SetState(STATE_RESPAWN);
+        }
+
+        public void AddLife()
+        {
+            _lives = Math.Min(3, _lives + 1);
+            _extraLifeGained = true;
         }
 
         public void ResetLives(int lives)

@@ -23,9 +23,16 @@ namespace MarioBros2023
         private int _tileFrame;
         public int TileFrame => _tileFrame;
 
-        public Level(int tileFrame)
+        private bool _isBonusLevel;
+        public bool IsBonusLevel => _isBonusLevel;
+        private float _levelTimer;
+        public float LevelTimer => _levelTimer;
+
+        public Level(int tileFrame, bool isBonusLevel)
         {
             _tileFrame = tileFrame;
+            _isBonusLevel = isBonusLevel;
+            _levelTimer = 0;
         }
 
         public void AddSpawn(Enemy.EnemyType enemyType, float timeToSpawn)
@@ -41,6 +48,7 @@ namespace MarioBros2023
 
         public void Update(float deltaTime)
         {
+            _levelTimer += deltaTime;
             if (_spawnIndex < _enemySpawns.Count)
             {
                 _spawnTimer += deltaTime;
@@ -59,13 +67,13 @@ namespace MarioBros2023
             switch (level)
             {
                 case 0:
-                    newLevel = new Level(0);
+                    newLevel = new Level(0, isBonusLevel: false);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 0f);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 3f);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 6f);
                     break;
                 case 1:
-                    newLevel = new Level(1);
+                    newLevel = new Level(0, isBonusLevel: false);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 0f);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 3f);
                     newLevel.AddSpawn(Enemy.EnemyType.Turtle, 6f);
@@ -74,11 +82,11 @@ namespace MarioBros2023
                     break;
 
                 case 2:
-                    newLevel = new Level(3);
+                    newLevel = new Level(1, isBonusLevel: true);
                     break;
 
                 case 3:
-                    newLevel = new Level(3);
+                    newLevel = new Level(2, isBonusLevel: false);
                     newLevel.AddSpawn(Enemy.EnemyType.Crab, 0f);
                     newLevel.AddSpawn(Enemy.EnemyType.Crab, 3f);
                     newLevel.AddSpawn(Enemy.EnemyType.Crab, 6f);

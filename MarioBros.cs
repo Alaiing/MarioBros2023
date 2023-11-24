@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Input;
 using Oudidon;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MarioBros2023
 {
@@ -37,6 +38,7 @@ namespace MarioBros2023
         private readonly List<Enemy> _enemies = new List<Enemy>();
 
         private SpriteSheet _redFireballSpriteSheet;
+        private SpriteSheet _greenFireballSpriteSheet;
 
         private SpriteSheet _coinSpriteSheet;
 
@@ -79,6 +81,7 @@ namespace MarioBros2023
         private const string STATE_LEVEL_START = "LevelStart";
         private const string STATE_GAME_OVER = "GameOver";
         private const string STATE_LEVEL_CLEARED = "LevelCleared";
+        private const string STATE_BONUS_LEVEL_COUNT = "BonusLevelCount";
 
         private float _stateChangeTimer;
 
@@ -86,6 +89,7 @@ namespace MarioBros2023
         private int _currentLevelIndex;
         private Level _currentLevel;
         private int _killedEnemies;
+        private int _bonusCoinsCollected;
         private int _powLeft;
 
         private SoundEffect[] _pootSteps;
@@ -97,6 +101,8 @@ namespace MarioBros2023
 
         private SoundEffect _splash;
 
+        private SoundEffect _titleMusic;
+        private SoundEffectInstance _titleMusicInstance;
         private SoundEffect _startGameJingle;
         private SoundEffect _startLevelJingle;
         private SoundEffect _currentJingle;
@@ -110,6 +116,9 @@ namespace MarioBros2023
         private SoundEffect _powSound;
 
         private SoundEffect _redFireballSound;
+        private SoundEffect _greenFireballSound;
+        private SoundEffectInstance _greenFireballSoundInstance;
+        private SoundEffect _greenFireballSpawnSound;
 
         private SoundEffect _coinSpawnSound;
         private SoundEffect _coinCollectSound;
@@ -138,12 +147,12 @@ namespace MarioBros2023
             EventsManager.ListenTo<Coin>("COIN_COLLECTED", OnCoinCollected);
 
             _gameStateMachine = new SimpleStateMachine();
-            _gameStateMachine.AddState(STATE_TITLE, OnEnter: null, OnExit: null, OnUpdate: TitleUpdate);
+            _gameStateMachine.AddState(STATE_TITLE, OnEnter: () => _titleMusicInstance.Play(), OnExit: () => _titleMusicInstance.Stop(), OnUpdate: TitleUpdate);
             _gameStateMachine.AddState(STATE_LEVEL_START, OnEnter: LevelStartEnter, OnExit: LevelStartEnd, OnUpdate: LevelStartUpdate);
             _gameStateMachine.AddState(STATE_GAME, OnEnter: null, OnExit: null, OnUpdate: GameplayUpdate);
             _gameStateMachine.AddState(STATE_GAME_OVER, OnEnter: GameOverEnter, OnExit: null, OnUpdate: GameOverUpdate);
             _gameStateMachine.AddState(STATE_LEVEL_CLEARED, OnEnter: () => _stateChangeTimer = 0, OnExit: null, OnUpdate: LevelClearedUpdate);
-            _gameStateMachine.SetState(STATE_TITLE);
+            _gameStateMachine.AddState(STATE_BONUS_LEVEL_COUNT, OnEnter: null, OnExit: null, OnUpdate: null);
 
             CameraShake.Enabled = true;
 
@@ -152,7 +161,18 @@ namespace MarioBros2023
 
         private void OnCoinCollected(Coin coin)
         {
-            IncreaseScore(_mario, ConfigManager.GetConfig("COIN_SCORE", 800), coin.InitialPosition);
+            if (_currentLevel.IsBonusLevel)
+            {
+                _bonusCoinsCollected++;
+                if (_bonusCoinsCollected == 10)
+                {
+                    _gameStateMachine.SetState(STATE_LEVEL_CLEARED);
+                }
+            }
+            else
+            {
+                IncreaseScore(_mario, ConfigManager.GetConfig("COIN_SCORE", 800), coin.InitialPosition);
+            }
         }
 
         private void OnEnemyDying(Enemy enemy)
@@ -201,6 +221,8 @@ namespace MarioBros2023
             _enemyFlip = Content.Load<SoundEffect>("beuha");
             _enemyDie = Content.Load<SoundEffect>("grlgrlgrl");
 
+            _titleMusic = Content.Load<SoundEffect>("title");
+            _titleMusicInstance = _titleMusic.CreateInstance();
             _startGameJingle = Content.Load<SoundEffect>("tadoudi");
             _startLevelJingle = Content.Load<SoundEffect>("doudidou");
             _endLevelJingle = Content.Load<SoundEffect>("grlgrlgrlgrlgrlgrl");
@@ -209,6 +231,10 @@ namespace MarioBros2023
             _powSound = Content.Load<SoundEffect>("powpow");
 
             _redFireballSound = Content.Load<SoundEffect>("brruui");
+            _greenFireballSound = Content.Load<SoundEffect>("bruibrui");
+            _greenFireballSpawnSound = Content.Load<SoundEffect>("brrrrrr");
+            _greenFireballSoundInstance = _greenFireballSound.CreateInstance();
+            _greenFireballSoundInstance.IsLooped = true;
 
             _coinSpawnSound = Content.Load<SoundEffect>("peuing");
             _coinCollectSound = Content.Load<SoundEffect>("puddin");
@@ -240,6 +266,11 @@ namespace MarioBros2023
             _redFireballSpriteSheet = new SpriteSheet(Content, "fireball-red", 8, 8, 4, 4);
             _redFireballSpriteSheet.RegisterAnimation("Move", 0, 3, 20f);
             _redFireballSpriteSheet.RegisterAnimation("Disappear", 4, 8, 8f);
+
+            _greenFireballSpriteSheet = new SpriteSheet(Content, "fireball-green", 8, 8, 4, 4);
+            _greenFireballSpriteSheet.RegisterAnimation("Move", 0, 3, 50f);
+            _greenFireballSpriteSheet.RegisterAnimation("Appear", 4, 6, 16f);
+            _greenFireballSpriteSheet.RegisterAnimation("Disappear", 4, 8, 8f);
 
             _splashSpriteSheet = new SpriteSheet(Content, "splash", 16, 16, 8, 16);
             _turtleSpriteSheet.RegisterAnimation("Splash", 0, 2, 1f / 3f);
@@ -295,6 +326,11 @@ namespace MarioBros2023
 
             _levels.Add(Level.CreateLevel(0));
             _levels.Add(Level.CreateLevel(1));
+            _levels.Add(Level.CreateLevel(2));
+            _levels.Add(Level.CreateLevel(3));
+
+            _gameStateMachine.SetState(STATE_TITLE);
+
         }
 
         private void StartGame()
@@ -316,8 +352,20 @@ namespace MarioBros2023
             _mario.Walk();
             _enemies.Clear();
 
+            if (_currentLevel.IsBonusLevel)
+            {
+                _bonusCoinsCollected = 0;
+                SpawnBonusLevelCoins();
+            }
+
             _killedEnemies = 0;
             _redFireballSpawnTimer = 0;
+            if (_redFireball != null)
+                _redFireball.Visible = false;
+            _greenFireballSpawned = false;
+            _greenFireballTimer = 0;
+            if (_greenFireball != null)
+                _greenFireball.Visible = false;
             _currentJingle.Play();
         }
 
@@ -345,7 +393,6 @@ namespace MarioBros2023
             if (SimpleControls.IsStartDown())
             {
                 StartGame();
-                //GameplayUpdate(deltaTime);
             }
         }
 
@@ -354,7 +401,13 @@ namespace MarioBros2023
             UpdatePlatform(deltaTime);
             UpdatePopScores(deltaTime);
             UpdateRedFireball(deltaTime);
+            UpdateGreenFireball(deltaTime);
             _currentLevel.Update(deltaTime);
+            if (_currentLevel.IsBonusLevel && _currentLevel.LevelTimer >= 20)
+            {
+                _gameStateMachine.SetState(STATE_LEVEL_CLEARED);
+                return;
+            }
 
             _mario.Update(deltaTime);
 
@@ -460,6 +513,10 @@ namespace MarioBros2023
         private void LevelStartUpdate(float deltaTime)
         {
             _levelStartTimer += deltaTime;
+            foreach(Enemy enemy in _enemies) 
+            {
+                enemy.Animate(deltaTime);
+            }
             if (_levelStartTimer > _currentJingle.Duration.TotalSeconds)
             {
                 _gameStateMachine.SetState(STATE_GAME);
@@ -474,16 +531,32 @@ namespace MarioBros2023
         private void LevelClearedUpdate(float deltaTime)
         {
             _stateChangeTimer += deltaTime;
-            if (_stateChangeTimer > _endLevelJingle.Duration.TotalSeconds)
+            if (_stateChangeTimer > (_currentLevel.IsBonusLevel ? 5f : _endLevelJingle.Duration.TotalSeconds))
             {
-                _currentLevelIndex++;
-                if (_currentLevelIndex < _levels.Count)
+                if (_currentLevel.IsBonusLevel)
                 {
-                    _gameStateMachine.SetState(STATE_LEVEL_START);
+                    _gameStateMachine.SetState(STATE_BONUS_LEVEL_COUNT);
                 }
                 else
                 {
-                    _gameStateMachine.SetState(STATE_GAME_OVER);
+                    _currentLevelIndex++;
+                    if (_currentLevelIndex < _levels.Count)
+                    {
+                        if (_levels[_currentLevelIndex].IsBonusLevel)
+                        {
+                            StartLevel();
+                            _startLevelJingle.Play();
+                            _gameStateMachine.SetState(STATE_GAME);
+                        }
+                        else
+                        {
+                            _gameStateMachine.SetState(STATE_LEVEL_START);
+                        }
+                    }
+                    else
+                    {
+                        _gameStateMachine.SetState(STATE_GAME_OVER);
+                    }
                 }
             }
         }
@@ -740,7 +813,8 @@ namespace MarioBros2023
 
             DrawSplash(_spriteBatch);
 
-            DrawRedFireball(_spriteBatch);
+            DrawFireball(_spriteBatch, _redFireball);
+            DrawFireball(_spriteBatch, _greenFireball);
         }
 
         private void DrawScore(SpriteBatch spriteBatch)
@@ -894,11 +968,37 @@ namespace MarioBros2023
         {
             spawnCount++;
             Coin newCoin = new Coin(_coinSpriteSheet, _level, _coinSpawnSound, _coinCollectSound);
-            newCoin.name = $"Coin {spawnCount}";
             newCoin.SetBaseSpeed(ConfigManager.GetConfig("COIN_SPEED", 50f));
             newCoin.Enter(side);
             _enemies.Add(newCoin);
         }
+
+        public void SpawnBonusLevelCoins()
+        {
+            Vector2[] positions = new Vector2[]
+            {
+                new Vector2(57,36),
+                new Vector2(201,36),
+                new Vector2(24,90),
+                new Vector2(44,90),
+                new Vector2(232,90),
+                new Vector2(212,90),
+                new Vector2(96,138),
+                new Vector2(160,138),
+                new Vector2(41,186),
+                new Vector2(215,186),
+            };
+            for(int i = 0; i< 10;i++)
+            {
+                Coin newCoin = new Coin(_coinSpriteSheet, _level, _coinSpawnSound, _coinCollectSound);
+                newCoin.SetBaseSpeed(0f);
+                newCoin.MoveTo(positions[i]);
+                newCoin.SetFrame(_random.Next(newCoin.SpriteSheet.GetAnimationFrameCount("Rotate")));
+                newCoin.IgnorePlatforms = true;
+                _enemies.Add(newCoin);
+            }
+        }
+
         #endregion
 
         #region Scoring
@@ -917,6 +1017,11 @@ namespace MarioBros2023
             if (player.Score > _highscore)
             {
                 _highscore = player.Score;
+            }
+            if (player.Score > 20000 && !player.ExtraLifeGained)
+            {
+                player.AddLife();
+                // play sound
             }
             Vector2 scorePosition = position - new Vector2(0, _marioSpriteSheet.SpriteHeight);
             switch (score)
@@ -959,6 +1064,7 @@ namespace MarioBros2023
 
         #region Fireballs
         private Character _redFireball;
+        private Character _greenFireball;
         private bool _exploding;
         private float _redFireballSpawnTimer;
 
@@ -1040,7 +1146,7 @@ namespace MarioBros2023
                     float newY = _redFireball.Position.Y + _redFireball.MoveDirection.Y * (ConfigManager.GetConfig("MARIO_MAX_SPEED", 75) / 1) * deltaTime;
                     _redFireball.MoveTo(new Vector2(newX, newY));
 
-                    TestRedFireballCollision(_mario);
+                    TestFireballCollision(_mario, _redFireball);
                 }
 
                 _redFireball.Animate(deltaTime);
@@ -1101,25 +1207,152 @@ namespace MarioBros2023
             return hasBumped;
         }
 
-        private void DrawRedFireball(SpriteBatch spriteBatch)
+        private void DrawFireball(SpriteBatch spriteBatch, Character fireball)
         {
-            if (_redFireball != null && _redFireball.Visible)
+            if (fireball != null && fireball.Visible)
             {
-                _redFireball.Draw(spriteBatch);
+                fireball.Draw(spriteBatch);
             }
         }
 
-        private void TestRedFireballCollision(Player player)
+        private void TestFireballCollision(Player player, Character fireball)
         {
-            int relativePositionX = Math.Abs(player.PixelPositionX - _redFireball.PixelPositionX);
-            int relativePositionY = Math.Abs(player.PixelPositionY - MARIO_COLLISION_HEIGHT / 2 - _redFireball.PixelPositionY);
+            int relativePositionX = Math.Abs(player.PixelPositionX - fireball.PixelPositionX);
+            int relativePositionY = Math.Abs(player.PixelPositionY - MARIO_COLLISION_HEIGHT / 2 - fireball.PixelPositionY);
             if (relativePositionX <= MARIO_COLLISION_WIDTH / 2 && relativePositionY <= MARIO_COLLISION_HEIGHT / 2)
             {
                 KillMario();
                 _exploding = true;
-                _redFireball.SetAnimation("Disappear", KillRedFireBall);
+                fireball.SetSpeed(0f);
+                if (fireball == _redFireball)
+                {
+                    fireball.SetAnimation("Disappear", KillRedFireBall);
+                }
+                else
+                {
+                    _greenFireballSoundInstance.Stop();
+                    fireball.SetAnimation("Disappear", KillGreenFireBall);
+                }
+
             }
         }
+
+        private int _greenAppearAnimationCount;
+        private bool _greenFireballIsMoving;
+        private float _greenFireballTimer;
+        private bool _greenFireballSpawned;
+        private float _greenMoveTimer;
+        private float _greenStartY;
+        private float _cycleDuration = 1.25f;
+        private float _maxHeight = 16f;
+        private float _minHeight = 8f;
+
+
+        private void SpawnGreenFireball()
+        {
+            _greenFireball ??= new Character(_greenFireballSpriteSheet);
+
+            // Etage de mario
+            float spawnY = 53;
+            if (_mario.PixelPositionY <= 64)
+                spawnY += 0;
+            else if (_mario.PixelPositionY <= 120)
+                spawnY += 48;
+            else if (_mario.PixelPositionY <= 160)
+                spawnY += 48 * 2;
+            else
+                spawnY += 48 * 3;
+
+            if (_mario.PixelPositionX > SCREEN_WIDTH / 2)
+            {
+                _greenFireball.MoveTo(new Vector2(24, spawnY));
+                _greenFireball.LookTo(new Vector2(1, 0), rotate: false);
+            }
+            else
+            {
+                _greenFireball.MoveTo(new Vector2(SCREEN_WIDTH - 24, spawnY));
+                _greenFireball.LookTo(new Vector2(-1, 0), rotate: false);
+            }
+
+            _greenAppearAnimationCount = 0;
+            _greenFireballIsMoving = false;
+            _greenFireballTimer = 0;
+            _greenFireball.SetAnimation("Appear", UpdateGreenFireballAnimation);
+            _greenFireballSpawnSound.Play();
+            _greenFireball.Visible = true;
+            _greenFireballSpawned = true;
+        }
+
+        private void UpdateGreenFireballAnimation()
+        {
+            _greenAppearAnimationCount++;
+            if (_greenAppearAnimationCount > 2)
+            {
+                _greenFireball.SetAnimation("Move");
+                _greenFireball.SetBaseSpeed(_mario.MaxSpeed);
+                _greenFireball.SetSpeed(1f);
+                _greenMoveTimer = 0;
+                _greenStartY = _greenFireball.Position.Y;
+                _greenFireballIsMoving = true;
+                _greenFireballSoundInstance.Play();
+            }
+        }
+
+        private void UpdateGreenFireball(float deltaTime)
+        {
+            if (_greenFireball == null || !_greenFireball.Visible)
+            {
+                _greenFireballTimer += deltaTime;
+                if (_greenFireballTimer > (_greenFireballSpawned ? 5f : 45f))
+                {
+                    SpawnGreenFireball();
+                }
+            }
+            else
+            {
+                _greenFireball.Animate(deltaTime);
+                if (_greenFireballIsMoving)
+                {
+                    _greenFireball.Move(deltaTime);
+                    if (_greenFireball.PixelPositionX > SCREEN_WIDTH - 24 || _greenFireball.PixelPositionX < 24)
+                    {
+                        _greenFireball.SetSpeed(0f);
+                        _greenFireballSoundInstance.Stop();
+                        _greenFireball.SetAnimation("Disappear", KillGreenFireBall);
+                    }
+                    else
+                    {
+                        _greenMoveTimer += deltaTime;
+
+                        _greenMoveTimer %= _cycleDuration;
+
+                        float y = (MathF.Sin(_greenMoveTimer * MathF.PI * 4 / _cycleDuration - MathF.PI / 2) + 1) / 2;
+
+                        float height;
+                        if (_greenMoveTimer < _cycleDuration / 2)
+                        {
+                            height = _maxHeight;
+                        }
+                        else
+                        {
+
+                            height = _minHeight;
+                        }
+
+                        _greenFireball.MoveTo(new Vector2(_greenFireball.Position.X, _greenStartY - y * height));
+                    }
+                }
+
+                TestFireballCollision(_mario, _greenFireball);
+            }
+        }
+
+        private void KillGreenFireBall()
+        {
+            _greenFireball.Visible = false;
+            _greenFireballTimer = 0;
+        }
+
         #endregion
     }
 }

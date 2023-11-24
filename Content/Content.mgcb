@@ -19,11 +19,23 @@
 /processorParam:Quality=Best
 /build:beuha.wav
 
+#begin brrrrrr.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:brrrrrr.wav
+
 #begin brruui.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:brruui.wav
+
+#begin bruibrui.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:bruibrui.wav
 
 #begin coin.png
 /importer:TextureImporter
@@ -84,6 +96,18 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:doudidou.wav
+
+#begin fireball-green.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:fireball-green.png
 
 #begin fireball-red.png
 /importer:TextureImporter
@@ -360,6 +384,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:title-screen.png
+
+#begin title.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:title.wav
 
 #begin turtle.png
 /importer:TextureImporter
