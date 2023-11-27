@@ -34,9 +34,9 @@ namespace MarioBros2023
             }
         }
 
-        public override void Bump(int direction, bool withSound)
+        public override void Bump(PlatformCharacter bumper, int direction, bool withSound)
         {
-            Kill(0);
+            Kill(bumper, 0);
         }
 
         private bool _animationDone;
@@ -58,7 +58,7 @@ namespace MarioBros2023
             if (_animationDone)
             {
                 SetState(STATE_DEAD);
-                EventsManager.FireEvent("COIN_COLLECTED", this);
+                EventsManager.FireEvent("COIN_COLLECTED", this, _killer);
             }
             else
             {

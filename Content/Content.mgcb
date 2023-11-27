@@ -49,6 +49,18 @@
 /processorParam:TextureFormat=Color
 /build:coin.png
 
+#begin countdown.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:countdown.png
+
 #begin crab.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -157,6 +169,18 @@
 /processorParam:Quality=Best
 /build:huii.wav
 
+#begin Luigi.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Luigi.png
+
 #begin mario-head.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -169,6 +193,18 @@
 /processorParam:TextureFormat=Color
 /build:mario-head.png
 
+#begin mario-text.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:mario-text.png
+
 #begin Mario.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -180,6 +216,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Mario.png
+
+#begin no-bonus-text.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:no-bonus-text.png
 
 #begin overlay.png
 /importer:TextureImporter
@@ -198,6 +246,18 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:pehou.wav
+
+#begin perfect-bonus-text.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:perfect-bonus-text.png
 
 #begin peuing.wav
 /importer:WavImporter
@@ -337,6 +397,12 @@
 /processorParam:TextureFormat=Color
 /build:splash.png
 
+#begin tadoudadoum.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tadoudadoum.wav
+
 #begin tadoudi.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -348,6 +414,18 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:tbltbltbltbl.wav
+
+#begin thune.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:thune.wav
+
+#begin thunethune.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:thunethune.wav
 
 #begin tile-bump.png
 /importer:TextureImporter
@@ -372,6 +450,12 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:tiles.png
+
+#begin tingtungtong.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:tingtungtong.wav
 
 #begin title-screen.png
 /importer:TextureImporter

@@ -41,7 +41,9 @@ namespace MarioBros2023
         private SoundEffectInstance _hit;
         private SoundEffectInstance _death;
 
-        public Player(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level, null)
+        private SimpleControls.PlayerNumber _playerNumber;
+
+        public Player(SpriteSheet spriteSheet, SimpleControls.PlayerNumber playerNumber, MarioBros.LevelTile[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level, null)
         {
             _maxSpeed = ConfigManager.GetConfig("MARIO_MAX_SPEED", 75f);
             _acceleration = ConfigManager.GetConfig("MARIO_ACCELERATION", 400f);
@@ -61,6 +63,8 @@ namespace MarioBros2023
 
             _onAnimationFrame += OnFrameChange;
             _currentPootStepIndex = 0;
+
+            _playerNumber = playerNumber;
         }
 
         public override void Update(float deltaTime)
@@ -133,7 +137,7 @@ namespace MarioBros2023
         {
             SimpleControls.GetStates();
             bool hasInput = false;
-            if (SimpleControls.IsLeftDown(SimpleControls.PlayerNumber.Player1))
+            if (SimpleControls.IsLeftDown(_playerNumber))
             {
                 hasInput = true;
                 _currentSpeed += -_acceleration * deltaTime;
@@ -151,7 +155,7 @@ namespace MarioBros2023
                     SetAnimation(WalkAnimationName);
                 }
             }
-            else if (SimpleControls.IsRightDown(SimpleControls.PlayerNumber.Player1))
+            else if (SimpleControls.IsRightDown(_playerNumber))
             {
                 hasInput = true;
                 _currentSpeed += _acceleration * deltaTime;
@@ -170,7 +174,7 @@ namespace MarioBros2023
                     SetAnimation(WalkAnimationName);
                 }
             }
-            if (SimpleControls.IsADown(SimpleControls.PlayerNumber.Player1))
+            if (SimpleControls.IsADown(_playerNumber))
             {
                 hasInput = true;
                 Jump(ConfigManager.GetConfig("MARIO_JUMP_DURATION", 0.5f), ConfigManager.GetConfig("MARIO_JUMP_HEIGHT", 75));

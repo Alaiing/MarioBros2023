@@ -19,7 +19,7 @@ namespace MarioBros2023
 
         }
 
-        public override void Bump(int direction, bool withSound)
+        public override void Bump(PlatformCharacter player, int direction, bool withSound)
         {
             if (!IsFlipped && !_angry)
             {
@@ -30,7 +30,7 @@ namespace MarioBros2023
             }
             else
             {
-                base.Bump(direction, withSound);
+                base.Bump(player, direction, withSound);
                 if (IsFlipped)
                 {
                     _angry = false;

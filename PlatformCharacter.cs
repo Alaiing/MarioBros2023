@@ -38,6 +38,8 @@ namespace MarioBros2023
         public bool IsFlipped => _isFlipped;
         protected float _flippedDuration;
 
+        protected PlatformCharacter _killer;
+
         protected SimpleStateMachine _stateMachine;
         private readonly MarioBros.LevelTile[,] _level;
 
@@ -173,7 +175,7 @@ namespace MarioBros2023
             SetState(STATE_FALL);
         }
 
-        public virtual void Bump(int direction, bool withSound)
+        public virtual void Bump(PlatformCharacter bumper, int direction, bool withSound)
         {
             _isFlipped = !_isFlipped;
             if (_isFlipped)
@@ -209,8 +211,9 @@ namespace MarioBros2023
             Jump(0.25f, 15);
         }
 
-        public virtual void Kill(int direction = 0)
+        public virtual void Kill(PlatformCharacter killer, int direction = 0)
         {
+            _killer = killer;
             if (direction != 0)
             {
                 LookTo(new Vector2(direction, 0));
