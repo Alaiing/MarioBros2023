@@ -192,7 +192,7 @@ namespace MarioBros2023
                 }
                 if (withSound)
                 {
-                    _bumpSound.Play();
+                    _bumpSound?.Play();
                 }
             }
             else
@@ -208,7 +208,7 @@ namespace MarioBros2023
                     LookTo(new Vector2(direction, 0));
                 }
             }
-            Jump(0.25f, 15);
+            Jump(0.25f, 15, animationName: null);
         }
 
         public virtual void Kill(PlatformCharacter killer, int direction = 0)
@@ -221,10 +221,11 @@ namespace MarioBros2023
             SetState(STATE_DYING);
         }
 
-        public void Jump(float duration, float height)
+        public void Jump(float duration, float height, string animationName)
         {
             _jumpHeight = height;
             _jumpDuration = duration;
+            SetAnimation(animationName);
             SetState(STATE_JUMP);
         }
 
@@ -282,7 +283,6 @@ namespace MarioBros2023
 
         protected virtual void JumpEnter()
         {
-            SetAnimation("Jump");
             _jumpTimer = 0;
             _jumpStartingY = Position.Y;
         }

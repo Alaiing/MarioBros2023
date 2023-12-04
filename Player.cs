@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
+using SharpDX.Direct3D11;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,12 +15,14 @@ namespace MarioBros2023
     public class Player : PlatformCharacter
     {
         private const string STATE_RESPAWN = "Respawn";
+        private const string STATE_FLATTENED = "Flattened";
 
         private float _currentSpeed;
         private float _acceleration;
         private float _maxSpeed;
 
         public float MaxSpeed => _maxSpeed;
+        public float NormalizedCurrentSpeed => MathF.Abs(_currentSpeed) / _maxSpeed;
 
         private int _lives;
         public int LivesLeft => _lives;
@@ -34,6 +37,8 @@ namespace MarioBros2023
 
         public bool IsMoving => _stateMachine.CurrentState == STATE_JUMP || _stateMachine.CurrentState == STATE_FALL || _currentSpeed != 0;
 
+        public bool IsFlattened => _stateMachine.CurrentState == STATE_FLATTENED;
+
         private SoundEffectInstance[] _pootSteps;
         private int _currentPootStepIndex;
         private SoundEffectInstance _skid;
@@ -42,6 +47,13 @@ namespace MarioBros2023
         private SoundEffectInstance _death;
 
         private SimpleControls.PlayerNumber _playerNumber;
+
+        public RespawnPlatform RespawnPlatform { get; set; }
+
+        private float _pushedSpeed { get; set; }
+        private bool _isBeingPushed;
+
+        public static bool InContact;
 
         public Player(SpriteSheet spriteSheet, SimpleControls.PlayerNumber playerNumber, MarioBros.LevelTile[,] level, int lives, SoundEffect[] pootSteps, SoundEffect skid, SoundEffect jump, SoundEffect hit, SoundEffect death) : base(spriteSheet, level, null)
         {
@@ -101,11 +113,18 @@ namespace MarioBros2023
         {
             base.InitStateMachine();
             _stateMachine.AddState(STATE_RESPAWN, RespawnEnter, null, null);
+            _stateMachine.AddState(STATE_FLATTENED, FlattenedEnter, null, FlattenedUpdate);
         }
 
         public void Respawn()
         {
+            RespawnPlatform.Reset();
             _stateMachine.SetState(STATE_RESPAWN);
+        }
+
+        public void Flatten()
+        {
+            _stateMachine.SetState(STATE_FLATTENED);
         }
 
         public void AddLife()
@@ -137,47 +156,50 @@ namespace MarioBros2023
         {
             SimpleControls.GetStates();
             bool hasInput = false;
-            if (SimpleControls.IsLeftDown(_playerNumber))
+            if (!_isBeingPushed)
             {
-                hasInput = true;
-                _currentSpeed += -_acceleration * deltaTime;
-                if (MathF.Abs(_currentSpeed) >= _maxSpeed)
+                if (SimpleControls.IsLeftDown(_playerNumber))
                 {
-                    _currentSpeed = -_maxSpeed;
+                    hasInput = true;
+                    _currentSpeed += -_acceleration * deltaTime;
+                    if (MathF.Abs(_currentSpeed) >= _maxSpeed)
+                    {
+                        _currentSpeed = -_maxSpeed;
+                    }
+                    if (_currentSpeed >= 0)
+                    {
+                        SetAnimation("Slip");
+                        _skid.Play();
+                    }
+                    else
+                    {
+                        SetAnimation(WalkAnimationName);
+                    }
                 }
-                if (_currentSpeed >= 0)
+                else if (SimpleControls.IsRightDown(_playerNumber))
                 {
-                    SetAnimation("Slip");
-                    _skid.Play();
-                }
-                else
-                {
-                    SetAnimation(WalkAnimationName);
-                }
-            }
-            else if (SimpleControls.IsRightDown(_playerNumber))
-            {
-                hasInput = true;
-                _currentSpeed += _acceleration * deltaTime;
-                if (MathF.Abs(_currentSpeed) >= _maxSpeed)
-                {
-                    _currentSpeed = _maxSpeed;
-                }
+                    hasInput = true;
+                    _currentSpeed += _acceleration * deltaTime;
+                    if (MathF.Abs(_currentSpeed) >= _maxSpeed)
+                    {
+                        _currentSpeed = _maxSpeed;
+                    }
 
-                if (_currentSpeed <= 0)
-                {
-                    SetAnimation("Slip");
-                    _skid.Play();
-                }
-                else
-                {
-                    SetAnimation(WalkAnimationName);
+                    if (_currentSpeed <= 0)
+                    {
+                        SetAnimation("Slip");
+                        _skid.Play();
+                    }
+                    else
+                    {
+                        SetAnimation(WalkAnimationName);
+                    }
                 }
             }
             if (SimpleControls.IsADown(_playerNumber))
             {
                 hasInput = true;
-                Jump(ConfigManager.GetConfig("MARIO_JUMP_DURATION", 0.5f), ConfigManager.GetConfig("MARIO_JUMP_HEIGHT", 75));
+                PlayerJump();
                 _jump.Play();
             }
 
@@ -199,7 +221,15 @@ namespace MarioBros2023
                 }
                 else
                 {
-                    SetAnimation("Idle");
+                    if (!_isBeingPushed)
+                    {
+                        SetAnimation("Idle");
+                    }
+                    else
+                    {
+                        SetAnimation("Slip");
+                        _skid.Play();
+                    }
                 }
             }
             else
@@ -214,6 +244,11 @@ namespace MarioBros2023
 
             SetBaseSpeed(MathF.Abs(_currentSpeed));
             base.WalkUpdate(deltaTime);
+        }
+
+        public void PlayerJump()
+        {
+            Jump(ConfigManager.GetConfig("MARIO_JUMP_DURATION", 0.5f), ConfigManager.GetConfig("MARIO_JUMP_HEIGHT", 75), "Jump");
         }
 
         private bool CanSkid()
@@ -247,8 +282,7 @@ namespace MarioBros2023
             {
                 SetSpeed(0f);
                 _currentSpeed = 0;
-                Jump(0.25f, 15);
-                SetAnimation("Death");
+                Jump(0.25f, 15, "Death");
                 _death.Play();
             }
         }
@@ -270,5 +304,45 @@ namespace MarioBros2023
         }
 
         protected override void JumpExit() { }
+
+        protected override void FallExit()
+        {
+            SetSpeed(1f);
+        }
+
+        private void FlattenedEnter()
+        {
+            SetAnimation("Flatten", () => Walk());
+        }
+
+        private void FlattenedUpdate(float deltaTime)
+        {
+            Animate(deltaTime);
+        }
+
+        public override void Bump(PlatformCharacter bumper, int direction, bool withSound)
+        {
+            SetSpeed(0f);
+            _currentSpeed = 0;
+            Jump(0.25f, 15, animationName: null);
+        }
+
+        public void Push(float velocity)
+        {
+            _pushedSpeed = velocity;
+            _isBeingPushed = _currentSpeed == 0;
+        }
+
+        public void StopPush()
+        {
+            _pushedSpeed = 0;
+            _isBeingPushed = false;
+        }
+
+        public override void Move(float deltaTime)
+        {
+            base.Move(deltaTime);
+            _position += new Vector2(1, 0) * _pushedSpeed * deltaTime;
+        }
     }
 }

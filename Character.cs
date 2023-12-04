@@ -14,7 +14,7 @@ namespace Oudidon
         public bool IsAlive => _enabled;
         private readonly SpriteSheet _spriteSheet;
         public SpriteSheet SpriteSheet => _spriteSheet;
-        private Vector2 _position;
+        protected Vector2 _position;
         public Vector2 Position => _position;
         public int PixelPositionX => (int)MathF.Floor(_position.X);
         public int PixelPositionY => (int)MathF.Floor(_position.Y);
@@ -144,12 +144,7 @@ namespace Oudidon
 
         public virtual void Move(float deltaTime)
         {
-            //_moveStep += deltaTime * CurrentSpeed;
-            //if (_moveStep >= 1)
-            //{
-                _position += _moveDirection * CurrentSpeed * deltaTime;
-                //_moveStep -= 1;
-            //}
+            _position += _moveDirection * CurrentSpeed * deltaTime;
         }
 
         public void Animate(float deltaTime)
@@ -178,7 +173,7 @@ namespace Oudidon
 
         public virtual void Draw(SpriteBatch spriteBatch, int displayOffsetX = 0, int displayOffsetY = 0)
         {
-            if(Visible)
+            if (Visible)
             {
                 _spriteSheet.DrawAnimationFrame(_currentAnimation, (int)MathF.Floor(CurrentFrame), spriteBatch, new Vector2(PixelPositionX + displayOffsetX, PixelPositionY + displayOffsetY), _currentRotation, _currentScale, _color);
             }

@@ -53,15 +53,7 @@ namespace MarioBros2023
         private float _splashCurrentFrame;
         private float _splashX;
 
-        private SpriteSheet _respawnPlatform;
-        private float _respawnPlatformCurrentFrame;
-        private float _respawnPlatformY;
-        private float _respawnPlatformTimer;
-        private const float RESPAWN_PLATFORM_APPEARANCE_DURATION = 2f;
-        private const float RESPAWN_PLATFORM_DURATION = 12f;
-        private const float RESPAWN_PLATFORM_START_Y = 10f;
-        private const float RESPAWN_PLATFORM_Y = 40f;
-        private const float RESPAWN_PLATFORM_X = 108f;
+        private SpriteSheet _respawnPlatformSheet;
 
         public enum LevelTile { Empty, Tile, Pow }
         private LevelTile[,] _level;
@@ -70,7 +62,6 @@ namespace MarioBros2023
         private Texture2D _levelOverlay;
 
         private readonly List<Bump> _bumps = new List<Bump>();
-
         private Texture2D _titleSprite;
 
         private Texture2D _marioHeadSprite;
@@ -79,12 +70,14 @@ namespace MarioBros2023
         private Texture2D _marioText;
         private Texture2D _noBonusText;
         private Texture2D _perfectText;
+        private Texture2D _menuSelector;
 
-        private SpriteSheet _powSprite;
+        private SpriteSheet _powSheet;
 
-        private SpriteSheet _digits;
-        private SpriteSheet _scoreTitles;
-        private SpriteSheet _scorePopup;
+        private SpriteSheet _digitsSheet;
+        private SpriteSheet _scoreTitlesSheet;
+        private SpriteSheet _scorePopupSheet;
+        private SpriteSheet _playerGameOverSheet;
 
         private SimpleStateMachine _gameStateMachine;
         private const string STATE_TITLE = "Title";
@@ -139,6 +132,8 @@ namespace MarioBros2023
         private SoundEffect _bonusCoinCountSound;
         private SoundEffect _bonusPerfectSound;
 
+        private float _pushSpeed;
+
         public MarioBros()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -171,6 +166,9 @@ namespace MarioBros2023
             _gameStateMachine.AddState(STATE_BONUS_LEVEL_COUNT, OnEnter: BonusCountEnter, OnExit: null, OnUpdate: null);
 
             CameraShake.Enabled = true;
+
+            _pushSpeed = 1f;
+            _isGameMultiplayer = false;
 
             base.Initialize();
         }
@@ -269,7 +267,7 @@ namespace MarioBros2023
             _marioSpriteSheet.RegisterAnimation("Slip", 5, 5, 0);
             _marioSpriteSheet.RegisterAnimation("Hit", 6, 6, 0);
             _marioSpriteSheet.RegisterAnimation("Death", 7, 7, 0);
-            _marioSpriteSheet.RegisterAnimation("Flatten", 8, 9, 1f);
+            _marioSpriteSheet.RegisterAnimation("Flatten", 8, 9, 2f);
 
             _luigiSpriteSheet = new SpriteSheet(Content, "Luigi", 16, 24, 8, 24);
             _luigiSpriteSheet.RegisterAnimation("Idle", 0, 0, 0);
@@ -278,7 +276,7 @@ namespace MarioBros2023
             _luigiSpriteSheet.RegisterAnimation("Slip", 5, 5, 0);
             _luigiSpriteSheet.RegisterAnimation("Hit", 6, 6, 0);
             _luigiSpriteSheet.RegisterAnimation("Death", 7, 7, 0);
-            _luigiSpriteSheet.RegisterAnimation("Flatten", 8, 9, 1f);
+            _luigiSpriteSheet.RegisterAnimation("Flatten", 8, 9, 2f);
 
             _turtleSpriteSheet = new SpriteSheet(Content, "turtle", 16, 16, 8, 16);
             _turtleSpriteSheet.RegisterAnimation("Run", 0, 3, 20f);
@@ -308,12 +306,12 @@ namespace MarioBros2023
             _turtleSpriteSheet.RegisterAnimation("Splash", 0, 2, 1f / 3f);
             _splashCurrentFrame = -1f;
 
-            _respawnPlatform = new SpriteSheet(Content, "respawn", 16, 8);
-            _respawnPlatformCurrentFrame = -1f;
+            _respawnPlatformSheet = new SpriteSheet(Content, "respawn", 16, 8);
 
-            _digits = new SpriteSheet(Content, "digits", 7, 7);
-            _scoreTitles = new SpriteSheet(Content, "prefixes", 20, 7, 20, 0);
-            _scorePopup = new SpriteSheet(Content, "scores", 15, 7, 9, 7);
+            _digitsSheet = new SpriteSheet(Content, "digits", 7, 7);
+            _scoreTitlesSheet = new SpriteSheet(Content, "prefixes", 20, 7, 20, 0);
+            _scorePopupSheet = new SpriteSheet(Content, "scores", 15, 7, 9, 7);
+            _playerGameOverSheet = new SpriteSheet(Content, "player-gameover-text", 119, 7);
 
             _level = new LevelTile[32, 30];
             for (int i = 0; i < 12; i++)
@@ -350,6 +348,7 @@ namespace MarioBros2023
             _marioText = Content.Load<Texture2D>("mario-text");
             _noBonusText = Content.Load<Texture2D>("no-bonus-text");
             _perfectText = Content.Load<Texture2D>("perfect-bonus-text");
+            _menuSelector = Content.Load<Texture2D>("selector");
 
             _marioHeadSprite = Content.Load<Texture2D>("mario-head");
 
@@ -359,9 +358,12 @@ namespace MarioBros2023
             _luigi = new Player(_luigiSpriteSheet, SimpleControls.PlayerNumber.Player2, _level, 2, _pootSteps, _skidSounds, _jumpSounds, _hitSound, _deathSound);
             _luigi.CanBump = true;
 
+            _mario.RespawnPlatform = new RespawnPlatform(_mario, _respawnPlatformSheet, RespawnPlatform.RespawnSide.Left);
+            _luigi.RespawnPlatform = new RespawnPlatform(_luigi, _respawnPlatformSheet, RespawnPlatform.RespawnSide.Right);
+
             _titleSprite = Content.Load<Texture2D>("title-screen");
 
-            _powSprite = new SpriteSheet(Content, "pow", 16, 16);
+            _powSheet = new SpriteSheet(Content, "pow", 16, 16);
 
             _levels.Add(Level.CreateLevel(0));
             _levels.Add(Level.CreateLevel(1));
@@ -374,8 +376,6 @@ namespace MarioBros2023
 
         private void StartGame()
         {
-            _isGameMultiplayer = true;
-
             _mario.ResetLives(2);
             _mario.ResetScore();
             if (_isGameMultiplayer)
@@ -406,7 +406,7 @@ namespace MarioBros2023
                 _luigi.LookTo(new Vector2(-1, 0));
                 _luigi.Walk();
             }
-
+            HidePlayerGameOver();
             _enemies.Clear();
 
             if (_currentLevel.IsBonusLevel)
@@ -447,18 +447,28 @@ namespace MarioBros2023
         private void TitleUpdate(float deltaTime)
         {
             SimpleControls.GetStates();
-            if (SimpleControls.IsStartDown())
+            if (SimpleControls.IsStartDown() 
+                || SimpleControls.IsADown(SimpleControls.PlayerNumber.Player1))
             {
                 StartGame();
+            }
+            if (SimpleControls.IsUpPressedThisFrame(SimpleControls.PlayerNumber.Player1) || SimpleControls.IsDownPressedThisFrame(SimpleControls.PlayerNumber.Player1))
+            {
+                _isGameMultiplayer = !_isGameMultiplayer;
             }
         }
 
         private void GameplayUpdate(float deltaTime)
         {
-            UpdatePlatform(deltaTime);
+            _mario.RespawnPlatform.Update(deltaTime);
+            if (_isGameMultiplayer)
+            {
+                _luigi.RespawnPlatform.Update(deltaTime);
+            }
             UpdatePopScores(deltaTime);
             UpdateRedFireball(deltaTime);
             UpdateGreenFireball(deltaTime);
+            UpdatePlayerGameOver(deltaTime);
             _currentLevel.Update(deltaTime);
             if (_currentLevel.IsBonusLevel)
             {
@@ -499,10 +509,10 @@ namespace MarioBros2023
                 {
                     if (!enemy.IsDying && !enemy.IsEntering && !enemy.IsExiting)
                     {
-                        TestPlayerCollision(enemy, _mario);
+                        TestEnemyPlayerCollision(enemy, _mario);
                         if (_isGameMultiplayer)
                         {
-                            TestPlayerCollision(enemy, _luigi);
+                            TestEnemyPlayerCollision(enemy, _luigi);
                         }
 
                         foreach (Enemy otherEnemy in _enemies)
@@ -534,14 +544,61 @@ namespace MarioBros2023
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
 
+            if (_isGameMultiplayer)
+            {
+                int relativePositionX = _mario.PixelPositionX - _luigi.PixelPositionX;
+                int relativePositionY = _mario.PixelPositionY - _luigi.PixelPositionY;
+
+                if (Math.Abs(relativePositionY) < 21)
+                {
+                    if (relativePositionY == 0 && Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth)
+                    {
+                        int delta = _mario.SpriteSheet.SpriteWidth - Math.Abs(relativePositionX);
+                        _luigi.MoveBy(new Vector2(-(int)Math.Floor(delta / 2f) * Math.Sign(relativePositionX), 0));
+                        _mario.MoveBy(new Vector2((int)Math.Ceiling(delta / 2f) * Math.Sign(relativePositionX), 0));
+                    }
+
+                    if (!Player.InContact && Math.Abs(relativePositionX) <= _mario.SpriteSheet.SpriteWidth)
+                    {
+                        if (Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth / 2)
+                        {
+                            if (_mario.IsFalling && relativePositionY < 0 && !_luigi.IsFlattened)
+                            {
+                                _luigi.Flatten();
+                                _mario.PlayerJump();
+                            }
+                            else if (_luigi.IsFalling && relativePositionY > 0 && !_mario.IsFlattened)
+                            {
+                                _mario.Flatten();
+                                _luigi.PlayerJump();
+                            }
+                        }
+                        else
+                        {
+                            _luigi.Push((_pushSpeed + _mario.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * -Math.Sign(relativePositionX));
+                            _mario.Push((_pushSpeed + _luigi.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * Math.Sign(relativePositionX));
+                            Player.InContact = true;
+                        }
+                    }
+                    else if (Player.InContact)
+                    {
+                        if (Math.Abs(relativePositionX) > _mario.SpriteSheet.SpriteWidth + 2)
+                        {
+                            _luigi.StopPush();
+                            _mario.StopPush();
+                            Player.InContact = false;
                         }
                     }
                 }
             }
         }
 
-        private void TestPlayerCollision(Enemy enemy, Player player)
+        private void TestEnemyPlayerCollision(Enemy enemy, Player player)
         {
             int relativeYPosition = player.PixelPositionY - enemy.PixelPositionY;
             if (Math.Abs(player.PixelPositionX - enemy.PixelPositionX) < MARIO_COLLISION_WIDTH / 2 + ENEMY_COLLISION_WIDTH / 2
@@ -651,7 +708,6 @@ namespace MarioBros2023
             if (character is Coin coin)
             {
                 _enemies.Remove(coin);
-                // TODO add score
             }
             else
             {
@@ -674,11 +730,27 @@ namespace MarioBros2023
                 {
                     if (player.LivesLeft >= 0)
                     {
-                        Respawn();
+                        player.Respawn();
+                        _respawnSound.Play();
                     }
                     else
                     {
-                        GameOver();
+                        if (_isGameMultiplayer)
+                        {
+                            if (_mario.LivesLeft < 0 && _luigi.LivesLeft < 0)
+                            {
+                                GameOver();
+                            }
+                            else
+                            {
+                                player.Visible = false;
+                                ShowPlayerGameOver(player == _mario ? 0 : 1);
+                            }
+                        }
+                        else
+                        {
+                            GameOver();
+                        }
                     }
                 }
             }
@@ -687,57 +759,6 @@ namespace MarioBros2023
         private void GameOver()
         {
             _gameStateMachine.SetState(STATE_GAME_OVER);
-        }
-
-        private void Respawn()
-        {
-            _respawnPlatformCurrentFrame = 0;
-            _respawnPlatformY = RESPAWN_PLATFORM_START_Y;
-            _respawnPlatformTimer = 0;
-
-            _mario.MoveTo(new Vector2(RESPAWN_PLATFORM_X + 8, RESPAWN_PLATFORM_START_Y));
-            _mario.LookTo(new Vector2(1, 0));
-            _mario.Respawn();
-
-            _respawnSound.Play();
-        }
-
-        private void UpdatePlatform(float deltaTime)
-        {
-            if (_respawnPlatformCurrentFrame >= 0)
-            {
-                if (_mario.IsMoving)
-                {
-                    ClearPlatform();
-                    return;
-                }
-
-                _respawnPlatformTimer += deltaTime;
-                if (_respawnPlatformTimer <= RESPAWN_PLATFORM_APPEARANCE_DURATION)
-                {
-                    _respawnPlatformY = MathHelper.Lerp(RESPAWN_PLATFORM_START_Y, RESPAWN_PLATFORM_Y, _respawnPlatformTimer / 2f);
-                    _mario.MoveTo(new Vector2(RESPAWN_PLATFORM_X + 8, _respawnPlatformY));
-                }
-                else
-                {
-                    _mario.Walk();
-                    float platformTime = _respawnPlatformTimer - RESPAWN_PLATFORM_APPEARANCE_DURATION;
-                    if (platformTime >= RESPAWN_PLATFORM_DURATION)
-                    {
-                        ClearPlatform();
-                    }
-                    else
-                    {
-                        _respawnPlatformCurrentFrame = platformTime / (RESPAWN_PLATFORM_DURATION / 3);
-                    }
-                }
-            }
-        }
-
-        private void ClearPlatform()
-        {
-            _respawnPlatformCurrentFrame = -1f;
-            _mario.IgnorePlatforms = false;
         }
 
         private void StartBump(PlatformCharacter character)
@@ -779,29 +800,30 @@ namespace MarioBros2023
 
         protected void BumpEnemy(PlatformCharacter player, int positionX, int gridY)
         {
-            foreach (Enemy enemy in _enemies)
+            List<PlatformCharacter> characterList = GetAllCharacters();
+            foreach (PlatformCharacter character in characterList)
             {
-                int gridPositionY = enemy.PixelPositionY / 8;
+                int gridPositionY = character.PixelPositionY / 8;
                 if (gridPositionY == gridY)
                 {
                     int bumpDirection = 999;
-                    if (positionX <= enemy.PixelPositionX - 4 && positionX >= enemy.PixelPositionX - 12)
+                    if (positionX <= character.PixelPositionX - 4 && positionX >= character.PixelPositionX - 12)
                     {
                         bumpDirection = 1;
                     }
-                    if (positionX >= enemy.PixelPositionX + 4 && positionX <= enemy.PixelPositionX + 12)
+                    if (positionX >= character.PixelPositionX + 4 && positionX <= character.PixelPositionX + 12)
                     {
                         bumpDirection = -1;
                     }
-                    if (positionX >= enemy.PixelPositionX - 4 && positionX <= enemy.PixelPositionX + 4)
+                    if (positionX >= character.PixelPositionX - 4 && positionX <= character.PixelPositionX + 4)
                     {
                         bumpDirection = 0;
                     }
 
                     if (bumpDirection != 999)
                     {
-                        enemy.Bump(player, bumpDirection, true);
-                        if (enemy.IsFlipped && enemy is not Coin)
+                        character.Bump(player, bumpDirection, true);
+                        if (character.IsFlipped && character is not Coin)
                         {
                             IncreaseScore(_mario, ConfigManager.GetConfig("FLIP_SCORE", 10), show: false, Vector2.Zero);
                         }
@@ -853,6 +875,7 @@ namespace MarioBros2023
         private void TitleDraw()
         {
             _spriteBatch.Draw(_titleSprite, Vector2.Zero, Color.White);
+            _spriteBatch.Draw(_menuSelector, new Vector2(60, _isGameMultiplayer ? 164 : 135), Color.White); 
         }
 
         private void GameplayDraw(float deltaTime)
@@ -860,6 +883,8 @@ namespace MarioBros2023
             DrawLives(_spriteBatch);
 
             DrawLevel(_spriteBatch, deltaTime);
+
+            DrawPlayerGameOver(_spriteBatch);
 
             foreach (Enemy enemy in _enemies)
             {
@@ -880,9 +905,10 @@ namespace MarioBros2023
             }
 
 
-            if (_respawnPlatformCurrentFrame >= 0)
+            _mario.RespawnPlatform.Draw(_spriteBatch);
+            if (_isGameMultiplayer)
             {
-                _respawnPlatform.DrawFrame((int)MathF.Floor(_respawnPlatformCurrentFrame), _spriteBatch, new Vector2(108, _respawnPlatformY), 0, Vector2.One, Color.White);
+                _luigi.RespawnPlatform.Draw(_spriteBatch);
             }
 
             DrawScore(_spriteBatch);
@@ -936,27 +962,27 @@ namespace MarioBros2023
             int remainingTenth = (int)MathF.Floor((remainingTime - remainingSeconds) * 10);
 
             int tenSeconds = remainingSeconds / 10;
-            _digits.DrawFrame(tenSeconds, spriteBatch, new Vector2(numbersX, numbersY), 0, Vector2.One, Color.White);
+            _digitsSheet.DrawFrame(tenSeconds, spriteBatch, new Vector2(numbersX, numbersY), 0, Vector2.One, Color.White);
             int units = remainingSeconds - tenSeconds * 10;
-            _digits.DrawFrame(units, spriteBatch, new Vector2(numbersX + 8, numbersY), 0, Vector2.One, Color.White);
-            _digits.DrawFrame(10, spriteBatch, new Vector2(numbersX + 16, numbersY), 0, Vector2.One, Color.White);
-            _digits.DrawFrame(remainingTenth, spriteBatch, new Vector2(numbersX + 24, numbersY), 0, Vector2.One, Color.White);
+            _digitsSheet.DrawFrame(units, spriteBatch, new Vector2(numbersX + 8, numbersY), 0, Vector2.One, Color.White);
+            _digitsSheet.DrawFrame(10, spriteBatch, new Vector2(numbersX + 16, numbersY), 0, Vector2.One, Color.White);
+            _digitsSheet.DrawFrame(remainingTenth, spriteBatch, new Vector2(numbersX + 24, numbersY), 0, Vector2.One, Color.White);
         }
 
         private void DrawScore(SpriteBatch spriteBatch)
         {
             // Le score du joueur 1
-            _scoreTitles.DrawFrame(0, spriteBatch, new Vector2(31, 16), 0, Vector2.One, Color.White);
+            _scoreTitlesSheet.DrawFrame(0, spriteBatch, new Vector2(31, 16), 0, Vector2.One, Color.White);
             DrawNumber(spriteBatch, _mario.Score, 6, new Vector2(72, 16), new Vector2(-8, 0));
 
             // Le score du joueur 2 -- uniquement si en multi
             if (_isGameMultiplayer)
             {
-                _scoreTitles.DrawFrame(2, spriteBatch, new Vector2(183, 16), 0, Vector2.One, Color.White);
+                _scoreTitlesSheet.DrawFrame(2, spriteBatch, new Vector2(183, 16), 0, Vector2.One, Color.White);
                 DrawNumber(spriteBatch, _luigi.Score, 6, new Vector2(224, 16), new Vector2(-8, 0));
             }
             // Le highscore
-            _scoreTitles.DrawFrame(1, spriteBatch, new Vector2(111, 16), 0, Vector2.One, Color.White);
+            _scoreTitlesSheet.DrawFrame(1, spriteBatch, new Vector2(111, 16), 0, Vector2.One, Color.White);
             DrawNumber(spriteBatch, _highscore, 6, new Vector2(152, 16), new Vector2(-8, 0));
         }
 
@@ -966,7 +992,7 @@ namespace MarioBros2023
             {
                 int number = score % 10;
 
-                _digits.DrawFrame(number, spriteBatch, position, 0, Vector2.One, Color.White);
+                _digitsSheet.DrawFrame(number, spriteBatch, position, 0, Vector2.One, Color.White);
 
                 score = score / 10;
                 position += positionDelta;
@@ -1001,7 +1027,7 @@ namespace MarioBros2023
 
             if (_powLeft > 0)
             {
-                _powSprite.DrawFrame(3 - _powLeft, spriteBatch, new Vector2(120, 160), 0, Vector2.One, Color.White);
+                _powSheet.DrawFrame(3 - _powLeft, spriteBatch, new Vector2(120, 160), 0, Vector2.One, Color.White);
             }
         }
 
@@ -1058,7 +1084,7 @@ namespace MarioBros2023
 
         private void InitPOW()
         {
-            _powLeft = _powSprite.FrameCount;
+            _powLeft = _powSheet.FrameCount;
             _level[15, 20] = LevelTile.Pow;
             _level[16, 20] = LevelTile.Pow;
         }
@@ -1076,11 +1102,12 @@ namespace MarioBros2023
 
         private void POW(PlatformCharacter player)
         {
-            foreach (Enemy enemy in _enemies)
+            List<PlatformCharacter> characters = GetAllCharacters();
+            foreach (PlatformCharacter character in characters)
             {
-                if (!enemy.IsFalling) // TODO: allow if next to landing or all the way during the POW duration
+                if (character != player && !character.IsFalling)  // TODO: allow if next to landing or all the way during the POW duration
                 {
-                    enemy.Bump(player, 0, false);
+                    character.Bump(player, 0, false);
                 }
             }
 
@@ -1093,6 +1120,55 @@ namespace MarioBros2023
                 ClearPOW();
             }
         }
+
+        private List<PlatformCharacter> GetAllCharacters()
+        {
+            List<PlatformCharacter> characterList = new List<PlatformCharacter>();
+            characterList.AddRange(_enemies);
+            characterList.Add(_mario);
+            if (_isGameMultiplayer)
+            {
+                characterList.Add(_luigi);
+            }
+
+            return characterList;
+        }
+
+        #region GameOver
+        private float _gameOverTimer;
+        private int _gameOverIndex;
+
+        private void ShowPlayerGameOver(int playerIndex)
+        {
+            _gameOverIndex = playerIndex;
+        }
+
+        private void HidePlayerGameOver()
+        {
+            _gameOverIndex = -1;
+        }
+
+        private void UpdatePlayerGameOver(float deltaTime)
+        {
+            if (_gameOverIndex >= 0)
+            {
+                _gameOverTimer += deltaTime;
+                if (_gameOverTimer > 5f)
+                {
+                    HidePlayerGameOver();
+                }
+            }
+        }
+
+        private void DrawPlayerGameOver(SpriteBatch spriteBatch)
+        {
+            if (_gameOverIndex >= 0)
+            {
+                _playerGameOverSheet.DrawFrame(_gameOverIndex, spriteBatch, new Vector2(72, 88), 0, Vector2.One, Color.White);
+            }
+        }
+
+        #endregion
 
         #region Coins
         private void SpawnCoin(int side)
@@ -1192,7 +1268,7 @@ namespace MarioBros2023
         {
             foreach (PopScore score in _popScores)
             {
-                _scorePopup.DrawFrame(score.spriteFrame, spriteBatch, score.position, 0, Vector2.One, _marioScoreColor);
+                _scorePopupSheet.DrawFrame(score.spriteFrame, spriteBatch, score.position, 0, Vector2.One, _marioScoreColor);
             }
         }
         #endregion
@@ -1491,9 +1567,9 @@ namespace MarioBros2023
         #endregion
 
         #region Bonus round
-        int _bonusCoinsCounted;
-        bool _perfectJinglePlaying;
-        int _pendingScore;
+        private int _bonusCoinsCounted;
+        private bool _perfectJinglePlaying;
+        private int _pendingScore;
         private void BonusCountEnter()
         {
             _bonusCoinsCounted = 0;
@@ -1511,7 +1587,7 @@ namespace MarioBros2023
             {
                 if (_stateChangeTimer > 0.25f)
                 {
-                    _digits.DrawFrame(11, spriteBatch, new Vector2(184, 64), 0, Vector2.One, Color.White);
+                    _digitsSheet.DrawFrame(11, spriteBatch, new Vector2(184, 64), 0, Vector2.One, Color.White);
                     DrawNumber(spriteBatch, ConfigManager.GetConfig("COIN_SCORE", 800), 3, new Vector2(216, 64), new Vector2(-8, 0));
                 }
                 if (_stateChangeTimer > 0.5f)

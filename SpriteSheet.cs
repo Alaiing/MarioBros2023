@@ -67,7 +67,7 @@ namespace Oudidon
 
 		public bool HasAnimation(string name)
 		{
-			return _animations.ContainsKey(name);
+			return !string.IsNullOrEmpty(name) && _animations.ContainsKey(name);
 		}
 
         public int GetAnimationFrameCount(string animationName)

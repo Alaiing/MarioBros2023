@@ -26,7 +26,7 @@ namespace MarioBros2023
                 _angry = true;
                 SetAnimation(WalkAnimationName);
                 SetBaseSpeed(_baseSpeed + 7f);
-                Jump(0.25f, 15);
+                Jump(0.25f, 15, animationName: null);
             }
             else
             {
