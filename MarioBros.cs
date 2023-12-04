@@ -433,8 +433,6 @@ namespace MarioBros2023
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            SimpleControls.GetStates();
-
             UpdateBumps(deltaTime);
             UpdateSplash(deltaTime);
             _gameStateMachine.Update(deltaTime);
@@ -460,6 +458,7 @@ namespace MarioBros2023
 
         private void GameplayUpdate(float deltaTime)
         {
+            SimpleControls.GetStates();
             _mario.RespawnPlatform.Update(deltaTime);
             if (_isGameMultiplayer)
             {

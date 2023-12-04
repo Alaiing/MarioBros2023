@@ -23,10 +23,10 @@ namespace MarioBros2023
         private const string STATE_EXITING = "Exiting";
         private const string STATE_ENTERING = "Entering";
 
-        private float _enterExitTime;
+        protected float _enterExitTime;
 
-        private const int SPAWN_DISTANCE = 16;
-        private const int EXIT_DISTANCE = 16;
+        protected const int SPAWN_DISTANCE = 16;
+        protected const int EXIT_DISTANCE = 16;
 
         protected static Enemy LeftSpawnTaken;
         protected static Enemy RightSpawnTaken;
@@ -109,7 +109,7 @@ namespace MarioBros2023
 
         }
 
-        private void ExitUpdate(float deltaTime)
+        protected virtual void ExitUpdate(float deltaTime)
         {
             _enterExitTime += deltaTime;
             Move(deltaTime);

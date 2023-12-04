@@ -69,5 +69,18 @@ namespace MarioBros2023
                 }
             }
         }
+
+        protected override void ExitUpdate(float deltaTime)
+        {
+            _enterExitTime += deltaTime;
+            Move(deltaTime);
+            Animate(deltaTime);
+
+            if (_enterExitTime > EXIT_DISTANCE / CurrentSpeed)
+            {
+                SetState(STATE_DEAD);
+            }
+        }
+
     }
 }
