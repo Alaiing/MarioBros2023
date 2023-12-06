@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Net;
 using System.Runtime.CompilerServices;
 
 namespace MarioBros2023
@@ -352,6 +353,8 @@ namespace MarioBros2023
 
             _marioHeadSprite = Content.Load<Texture2D>("mario-head");
 
+            CreateSpriteFont();
+
             _mario = new Player(_marioSpriteSheet, SimpleControls.PlayerNumber.Player1, _level, 2, _pootSteps, _skidSounds, _jumpSounds, _hitSound, _deathSound);
             _mario.CanBump = true;
 
@@ -372,6 +375,25 @@ namespace MarioBros2023
 
             _gameStateMachine.SetState(STATE_TITLE);
 
+        }
+
+        SpriteFont _spriteFont;
+        private void CreateSpriteFont()
+        {
+            Texture2D fontTexture = Content.Load<Texture2D>("font");
+            List<Rectangle> glyphBounds = new List<Rectangle>();
+            List<Rectangle> cropping = new List<Rectangle>();
+            string charsString = " !.0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            List<char> chars = new List<char>();
+            chars.AddRange(charsString);
+            List<Vector3> kerning = new List<Vector3>();
+            for (int i = 0; i < fontTexture.Width / 8; i++)
+            {
+                glyphBounds.Add(new Rectangle(i * 8, 0, 8, 8));
+                cropping.Add(new Rectangle(0, 0, 8, 8));
+                kerning.Add(new Vector3(0, 8, 0));
+            }
+            _spriteFont = new SpriteFont(fontTexture, glyphBounds, cropping, chars, 0, 0, kerning, ' ');
         }
 
         private void StartGame()
@@ -845,7 +867,16 @@ namespace MarioBros2023
                     TitleDraw();
                     break;
                 case STATE_LEVEL_START:
+                    GameplayDraw(deltaTime);
+                    DrawPhase();
+                    break;
                 case STATE_GAME:
+                    GameplayDraw(deltaTime);
+                    if (_gameStateMachine.CurrentStateTimer < 2f)
+                    {
+                        DrawPhase();
+                    }
+                    break;
                 case STATE_LEVEL_CLEARED:
                     GameplayDraw(deltaTime);
                     break;
@@ -861,6 +892,7 @@ namespace MarioBros2023
                     DrawBonusCount(_spriteBatch, deltaTime);
                     break;
             }
+
             _spriteBatch.End();
 
             GraphicsDevice.SetRenderTarget(null);
@@ -869,6 +901,15 @@ namespace MarioBros2023
             _spriteBatch.End();
 
             base.Draw(gameTime);
+        }
+
+        private void DrawPhase()
+        {
+            _spriteBatch.DrawString(_spriteFont, $"PHASE {_currentLevelIndex + 1}", new Vector2(96, 136), Color.White);
+            if (_currentLevel.IsBonusLevel)
+            {
+                _spriteBatch.DrawString(_spriteFont, "TEST YOUR SKILL", new Vector2(73, 88), Color.White);
+            }
         }
 
         private void TitleDraw()
@@ -1028,6 +1069,7 @@ namespace MarioBros2023
             {
                 _powSheet.DrawFrame(3 - _powLeft, spriteBatch, new Vector2(120, 160), 0, Vector2.One, Color.White);
             }
+            spriteBatch.DrawString(_spriteFont, $"P:{_currentLevelIndex + 1}", new Vector2(8, 200), Color.White);
         }
 
         private void DrawSplash(SpriteBatch spriteBatch)

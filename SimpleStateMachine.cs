@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,12 +15,14 @@ namespace Oudidon
             public Action OnEnter;
             public Action<float> OnUpdate;
             public Action OnExit;
+            public float timer;
         }
 
         private readonly Dictionary<string, State> _states = new Dictionary<string, State>();
 
         private State _currentState;
         public string CurrentState => _currentState?.name;
+        public float CurrentStateTimer => _currentState.timer;
 
         public void AddState(string name, Action OnEnter, Action OnExit, Action<float> OnUpdate)
         {
@@ -34,12 +37,14 @@ namespace Oudidon
             _currentState?.OnExit?.Invoke();
             if (_states.TryGetValue(name, out _currentState))
             {
+                _currentState.timer = 0;
                 _currentState.OnEnter?.Invoke();
             }
         }
 
         public void Update(float deltaTime)
         {
+            _currentState.timer += deltaTime;
             _currentState?.OnUpdate?.Invoke(deltaTime);
         }
     }

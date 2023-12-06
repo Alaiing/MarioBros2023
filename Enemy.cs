@@ -161,6 +161,11 @@ namespace MarioBros2023
             EventsManager.FireEvent<Enemy>("ENEMY_DYING", this);
         }
 
+        protected override void DyingUpdate(float deltaTime)
+        {
+            base.DyingUpdate(deltaTime);
+        }
+
         protected bool TakeSpawn(int direction)
         {
             if (direction > 0)
