@@ -59,7 +59,7 @@ namespace MarioBros2023
             if (_phase < 2)
             {
                 _phase = _phase + 1;
-                SetBaseSpeed(_baseSpeed * 1.25f);
+                SetBaseSpeed(_baseSpeed * 1.5f);
                 SetAnimationSpeed(_animationSpeed * 1.5f);
             }
         }
@@ -220,6 +220,11 @@ namespace MarioBros2023
                     LeftSpawnTaken = null;
                 }
             }
+        }
+
+        public static void ReleaseSpawns()
+        {
+            RightSpawnTaken = LeftSpawnTaken = null;
         }
 
         protected override void FallExit()

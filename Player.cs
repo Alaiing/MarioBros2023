@@ -161,7 +161,15 @@ namespace MarioBros2023
                 if (SimpleControls.IsLeftDown(_playerNumber))
                 {
                     hasInput = true;
-                    _currentSpeed += -_acceleration * deltaTime;
+                    if (_currentSpeed == 0)
+                    {
+                        _currentSpeed = -_maxSpeed / 2;
+                    }
+                    else
+                    {
+                        _currentSpeed += -_acceleration * deltaTime;
+                    }
+
                     if (MathF.Abs(_currentSpeed) >= _maxSpeed)
                     {
                         _currentSpeed = -_maxSpeed;
@@ -179,7 +187,14 @@ namespace MarioBros2023
                 else if (SimpleControls.IsRightDown(_playerNumber))
                 {
                     hasInput = true;
-                    _currentSpeed += _acceleration * deltaTime;
+                    if (_currentSpeed == 0)
+                    {
+                        _currentSpeed = _maxSpeed / 2;
+                    }
+                    else
+                    {
+                        _currentSpeed += _acceleration * deltaTime;
+                    }
                     if (MathF.Abs(_currentSpeed) >= _maxSpeed)
                     {
                         _currentSpeed = _maxSpeed;
