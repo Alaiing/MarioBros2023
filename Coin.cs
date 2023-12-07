@@ -1,11 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Oudidon;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MarioBros2023
 {
@@ -16,7 +11,7 @@ namespace MarioBros2023
         private bool _isBeingCollected;
         public bool IsBeingCollected => _isBeingCollected;
         private Vector2 _initialPosition;
-        public Vector2 InitialPosition => _initialPosition; 
+        public Vector2 InitialPosition => _initialPosition;
 
         private SoundEffectInstance _collectSound;
 
@@ -53,7 +48,7 @@ namespace MarioBros2023
             SetAnimation("Collect", () => _animationDone = true);
         }
 
-        protected override void DyingUpdate(float deltaTime)
+        protected override void DyingUpdate(float deltaTime, float stateElapsedTime)
         {
             if (_animationDone)
             {
@@ -70,13 +65,12 @@ namespace MarioBros2023
             }
         }
 
-        protected override void ExitUpdate(float deltaTime)
+        protected override void ExitUpdate(float deltaTime, float stateElapsedTime)
         {
-            _enterExitTime += deltaTime;
             Move(deltaTime);
             Animate(deltaTime);
 
-            if (_enterExitTime > EXIT_DISTANCE / CurrentSpeed)
+            if (stateElapsedTime > EXIT_DISTANCE / CurrentSpeed)
             {
                 SetState(STATE_DEAD);
             }

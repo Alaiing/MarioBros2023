@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Policy;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Oudidon
 {
@@ -13,7 +9,7 @@ namespace Oudidon
         {
             public string name;
             public Action OnEnter;
-            public Action<float> OnUpdate;
+            public Action<float, float> OnUpdate;
             public Action OnExit;
             public float timer;
         }
@@ -24,7 +20,7 @@ namespace Oudidon
         public string CurrentState => _currentState?.name;
         public float CurrentStateTimer => _currentState.timer;
 
-        public void AddState(string name, Action OnEnter, Action OnExit, Action<float> OnUpdate)
+        public void AddState(string name, Action OnEnter, Action OnExit, Action<float, float> OnUpdate)
         {
             if (!_states.ContainsKey(name))
             {
@@ -45,7 +41,7 @@ namespace Oudidon
         public void Update(float deltaTime)
         {
             _currentState.timer += deltaTime;
-            _currentState?.OnUpdate?.Invoke(deltaTime);
+            _currentState?.OnUpdate?.Invoke(deltaTime, _currentState.timer);
         }
     }
 }

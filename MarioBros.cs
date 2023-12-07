@@ -5,10 +5,6 @@ using Microsoft.Xna.Framework.Input;
 using Oudidon;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Net;
-using System.Runtime.CompilerServices;
 
 namespace MarioBros2023
 {
@@ -16,7 +12,7 @@ namespace MarioBros2023
     {
         public const int SCREEN_WIDTH = 256;
         public const int SCREEN_HEIGHT = 224;
-        private const int SCREEN_SCALE = 4;
+        private int _screenScale;
 
         private const int MARIO_COLLISION_WIDTH = 16;
         private const int MARIO_COLLISION_HEIGHT = 16;
@@ -27,8 +23,6 @@ namespace MarioBros2023
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private RenderTarget2D _renderTarget;
-
-        private Random _random;
 
         private SpriteSheet _marioSpriteSheet;
         private Player _mario;
@@ -141,11 +135,13 @@ namespace MarioBros2023
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
 
-            _graphics.PreferredBackBufferWidth = SCREEN_WIDTH * SCREEN_SCALE;
-            _graphics.PreferredBackBufferHeight = SCREEN_HEIGHT * SCREEN_SCALE;
+            ConfigManager.LoadConfig("config.ini");
+            _screenScale = ConfigManager.GetConfig("SCREEN_SCALE", 4);
+            _graphics.PreferredBackBufferWidth = SCREEN_WIDTH * _screenScale;
+            _graphics.PreferredBackBufferHeight = SCREEN_HEIGHT * _screenScale;
             _graphics.ApplyChanges();
 
-            _random = new Random();
+            CommonRandom.Init();
         }
 
         protected override void Initialize()
@@ -214,7 +210,6 @@ namespace MarioBros2023
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            ConfigManager.LoadConfig("config.ini");
 
             _pootSteps = new SoundEffect[8];
             _pootSteps[0] = Content.Load<SoundEffect>("pout1");
@@ -406,7 +401,7 @@ namespace MarioBros2023
                 _luigi.ResetScore();
             }
 
-            _currentLevelIndex = 3;
+            _currentLevelIndex = 0;
             InitPOW();
             _currentJingle = _startGameJingle;
             _gameStateMachine.SetState(STATE_LEVEL_START);
@@ -442,12 +437,10 @@ namespace MarioBros2023
             _killedEnemies = 0;
             _redFireBallSpawnCount = 0;
             _redFireballSpawnTimer = 0;
-            if (_redFireball != null)
-                KillRedFireBall();
             _greenFireballSpawned = false;
             _greenFireballTimer = 0;
-            if (_greenFireball != null)
-                KillGreenFireBall();
+            RemoveFireballs();
+
             _currentJingle.Play();
         }
 
@@ -467,7 +460,7 @@ namespace MarioBros2023
             base.Update(gameTime);
         }
 
-        private void TitleUpdate(float deltaTime)
+        private void TitleUpdate(float deltaTime, float stateElapsedTime)
         {
             SimpleControls.GetStates();
             if (SimpleControls.IsStartDown()
@@ -481,7 +474,7 @@ namespace MarioBros2023
             }
         }
 
-        private void GameplayUpdate(float deltaTime)
+        private void GameplayUpdate(float deltaTime, float stateElapsedTime)
         {
             SimpleControls.GetStates();
             _mario.RespawnPlatform.Update(deltaTime);
@@ -520,7 +513,6 @@ namespace MarioBros2023
                 enemy.Update(deltaTime);
             }
 
-            // Test enemy contact
             for (int i = 0; i < _enemies.Count; i++)
             {
                 Enemy enemy = _enemies[i];
@@ -539,84 +531,94 @@ namespace MarioBros2023
                             TestEnemyPlayerCollision(enemy, _luigi);
                         }
 
-                        foreach (Enemy otherEnemy in _enemies)
-                        {
-                            if (!enemy.IsFalling && !enemy.IsFlipped && otherEnemy != enemy && otherEnemy.PixelPositionY == enemy.PixelPositionY)
-                            {
-                                int otherEnemyX = otherEnemy.PixelPositionX;
-                                if (enemy.PixelPositionX > SCREEN_WIDTH - BETWEEN_ENEMY_COLLISION_WIDTH / 2 && enemy.MoveDirection.X > 0)
-                                {
-                                    otherEnemyX += SCREEN_WIDTH;
-                                }
-                                else if (enemy.PixelPositionX < BETWEEN_ENEMY_COLLISION_WIDTH / 2 && enemy.MoveDirection.X < 0)
-                                {
-                                    otherEnemyX -= SCREEN_WIDTH;
-                                }
-
-                                int relativePositionX = otherEnemyX - enemy.PixelPositionX;
-                                if (relativePositionX != 0 && Math.Abs(relativePositionX) < BETWEEN_ENEMY_COLLISION_WIDTH && MathF.Sign(relativePositionX) == MathF.Sign(enemy.MoveDirection.X))
-                                {
-                                    enemy.LookTo(-enemy.MoveDirection);
-                                    if (enemy is not Coin)
-                                    {
-                                        enemy.SetSpeed(0);
-                                        enemy.SetAnimation("Turn", onAnimationEnd: () =>
-                                        {
-                                            enemy.SetSpeed(1f);
-                                            enemy.SetAnimation(enemy.WalkAnimationName);
-                                        });
-                                    }
-                                }
-                            }
-                        }
+                        TestEnemiesCollision(enemy);
                     }
                 }
             }
 
             if (_isGameMultiplayer)
             {
-                int relativePositionX = _mario.PixelPositionX - _luigi.PixelPositionX;
-                int relativePositionY = _mario.PixelPositionY - _luigi.PixelPositionY;
+                TestPlayersCollision();
+            }
+        }
 
-                if (Math.Abs(relativePositionY) < 21)
+        private void TestEnemiesCollision(Enemy enemy)
+        {
+            foreach (Enemy otherEnemy in _enemies)
+            {
+                if (!enemy.IsFalling && !enemy.IsFlipped && otherEnemy != enemy && otherEnemy.PixelPositionY == enemy.PixelPositionY)
                 {
-                    if (relativePositionY == 0 && Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth)
+                    int otherEnemyX = otherEnemy.PixelPositionX;
+                    if (enemy.PixelPositionX > SCREEN_WIDTH - BETWEEN_ENEMY_COLLISION_WIDTH / 2 && enemy.MoveDirection.X > 0)
                     {
-                        int delta = _mario.SpriteSheet.SpriteWidth - Math.Abs(relativePositionX);
-                        _luigi.MoveBy(new Vector2(-(int)Math.Floor(delta / 2f) * Math.Sign(relativePositionX), 0));
-                        _mario.MoveBy(new Vector2((int)Math.Ceiling(delta / 2f) * Math.Sign(relativePositionX), 0));
+                        otherEnemyX += SCREEN_WIDTH;
+                    }
+                    else if (enemy.PixelPositionX < BETWEEN_ENEMY_COLLISION_WIDTH / 2 && enemy.MoveDirection.X < 0)
+                    {
+                        otherEnemyX -= SCREEN_WIDTH;
                     }
 
-                    if (!Player.InContact && Math.Abs(relativePositionX) <= _mario.SpriteSheet.SpriteWidth)
+                    int relativePositionX = otherEnemyX - enemy.PixelPositionX;
+                    if (relativePositionX != 0 && Math.Abs(relativePositionX) < BETWEEN_ENEMY_COLLISION_WIDTH && MathF.Sign(relativePositionX) == MathF.Sign(enemy.MoveDirection.X))
                     {
-                        if (Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth / 2)
+                        enemy.LookTo(-enemy.MoveDirection);
+                        if (enemy is not Coin)
                         {
-                            if (_mario.IsFalling && relativePositionY < 0 && !_luigi.IsFlattened)
+                            enemy.SetSpeed(0);
+                            enemy.SetAnimation("Turn", onAnimationEnd: () =>
                             {
-                                _luigi.Flatten();
-                                _mario.PlayerJump();
-                            }
-                            else if (_luigi.IsFalling && relativePositionY > 0 && !_mario.IsFlattened)
-                            {
-                                _mario.Flatten();
-                                _luigi.PlayerJump();
-                            }
-                        }
-                        else
-                        {
-                            _luigi.Push((_pushSpeed + _mario.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * -Math.Sign(relativePositionX));
-                            _mario.Push((_pushSpeed + _luigi.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * Math.Sign(relativePositionX));
-                            Player.InContact = true;
+                                enemy.SetSpeed(1f);
+                                enemy.SetAnimation(enemy.WalkAnimationName);
+                            });
                         }
                     }
-                    else if (Player.InContact)
+                }
+            }
+        }
+
+        private void TestPlayersCollision()
+        {
+            int relativePositionX = _mario.PixelPositionX - _luigi.PixelPositionX;
+            int relativePositionY = _mario.PixelPositionY - _luigi.PixelPositionY;
+
+            if (Math.Abs(relativePositionY) < 21)
+            {
+                if (relativePositionY == 0 && Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth)
+                {
+                    int delta = _mario.SpriteSheet.SpriteWidth - Math.Abs(relativePositionX);
+                    _luigi.MoveBy(new Vector2(-(int)Math.Floor(delta / 2f) * Math.Sign(relativePositionX), 0));
+                    _mario.MoveBy(new Vector2((int)Math.Ceiling(delta / 2f) * Math.Sign(relativePositionX), 0));
+                }
+
+                if (!Player.InContact && Math.Abs(relativePositionX) <= _mario.SpriteSheet.SpriteWidth)
+                {
+                    if (Math.Abs(relativePositionX) < _mario.SpriteSheet.SpriteWidth / 2)
                     {
-                        if (Math.Abs(relativePositionX) > _mario.SpriteSheet.SpriteWidth + 2)
+                        if (_mario.IsFalling && relativePositionY < 0 && !_luigi.IsFlattened)
                         {
-                            _luigi.StopPush();
-                            _mario.StopPush();
-                            Player.InContact = false;
+                            _luigi.Flatten();
+                            _mario.PlayerJump();
                         }
+                        else if (_luigi.IsFalling && relativePositionY > 0 && !_mario.IsFlattened)
+                        {
+                            _mario.Flatten();
+                            _luigi.PlayerJump();
+                        }
+                    }
+                    else
+                    {
+                        _luigi.Push((_pushSpeed + _mario.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * -Math.Sign(relativePositionX));
+                        _mario.Push((_pushSpeed + _luigi.NormalizedCurrentSpeed * (1 - _pushSpeed)) * _mario.MaxSpeed * Math.Sign(relativePositionX));
+                        Player.InContact = true;
+                    }
+                }
+                else if (Player.InContact)
+                {
+                    if (Math.Abs(relativePositionX) > _mario.SpriteSheet.SpriteWidth + 2)
+                    {
+                        _luigi.StopPush();
+                        _mario.StopPush();
+                        Player.InContact = false;
                     }
                 }
             }
@@ -625,7 +627,8 @@ namespace MarioBros2023
         private void TestEnemyPlayerCollision(Enemy enemy, Player player)
         {
             int relativeYPosition = player.PixelPositionY - enemy.PixelPositionY;
-            if (Math.Abs(player.PixelPositionX - enemy.PixelPositionX) < MARIO_COLLISION_WIDTH / 2 + ENEMY_COLLISION_WIDTH / 2
+            if (!player.IsDying
+                && Math.Abs(player.PixelPositionX - enemy.PixelPositionX) < MARIO_COLLISION_WIDTH / 2 + ENEMY_COLLISION_WIDTH / 2
                 && (relativeYPosition >= 0 && relativeYPosition < MARIO_COLLISION_HEIGHT || relativeYPosition < 0 && -relativeYPosition < ENEMY_COLLISION_HEIGHT))
             {
                 if (enemy is Coin || enemy.IsFlipped)
@@ -649,36 +652,31 @@ namespace MarioBros2023
 
         private void GameOverEnter()
         {
-            KillRedFireBall();
-            KillGreenFireBall();
+            RemoveFireballs();
             _gameOverJingle.Play();
-            _stateChangeTimer = 0;
         }
-        private void GameOverUpdate(float deltaTime)
+
+        private void GameOverUpdate(float deltaTime, float stateElapsedTime)
         {
-            _stateChangeTimer += deltaTime;
-            if (_stateChangeTimer > _gameOverJingle.Duration.TotalSeconds)
+            if (stateElapsedTime > _gameOverJingle.Duration.TotalSeconds)
             {
                 _gameStateMachine.SetState(STATE_TITLE);
             }
         }
 
-        private float _levelStartTimer;
         private void LevelStartEnter()
         {
-            _levelStartTimer = 0;
             _popScores.Clear();
             StartLevel();
         }
 
-        private void LevelStartUpdate(float deltaTime)
+        private void LevelStartUpdate(float deltaTime, float stateElapsedTime)
         {
-            _levelStartTimer += deltaTime;
             foreach (Enemy enemy in _enemies)
             {
                 enemy.Animate(deltaTime);
             }
-            if (_levelStartTimer > _currentJingle.Duration.TotalSeconds)
+            if (stateElapsedTime > _currentJingle.Duration.TotalSeconds)
             {
                 _gameStateMachine.SetState(STATE_GAME);
             }
@@ -693,15 +691,13 @@ namespace MarioBros2023
 
         private void LevelClearedEnter()
         {
-            _stateChangeTimer = 0;
-            KillRedFireBall();
-            KillGreenFireBall();
+            KillFireballs();
+            _popScores.Clear();
         }
 
-        private void LevelClearedUpdate(float deltaTime)
+        private void LevelClearedUpdate(float deltaTime, float stateElapsedTime)
         {
-            _stateChangeTimer += deltaTime;
-            if (_stateChangeTimer > (_currentLevel.IsBonusLevel ? 5f : _endLevelJingle.Duration.TotalSeconds))
+            if (stateElapsedTime > (_currentLevel.IsBonusLevel ? 3f : _endLevelJingle.Duration.TotalSeconds))
             {
                 if (_currentLevel.IsBonusLevel)
                 {
@@ -865,6 +861,7 @@ namespace MarioBros2023
             }
         }
 
+        #region Draw
         protected override void Draw(GameTime gameTime)
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -909,7 +906,7 @@ namespace MarioBros2023
 
             GraphicsDevice.SetRenderTarget(null);
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp, blendState: BlendState.AlphaBlend);
-            _spriteBatch.Draw(_renderTarget, new Rectangle((int)MathF.Floor(CameraShake.ShakeOffset.X), (int)MathF.Floor(CameraShake.ShakeOffset.Y), SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE), Color.White);
+            _spriteBatch.Draw(_renderTarget, new Rectangle((int)MathF.Floor(CameraShake.ShakeOffset.X), (int)MathF.Floor(CameraShake.ShakeOffset.Y), SCREEN_WIDTH * _screenScale, SCREEN_HEIGHT * _screenScale), Color.White);
             _spriteBatch.End();
 
             base.Draw(gameTime);
@@ -1091,10 +1088,12 @@ namespace MarioBros2023
                 _splashSpriteSheet.DrawFrame((int)MathF.Floor(_splashCurrentFrame), spriteBatch, new Vector2(_splashX, SCREEN_HEIGHT), 0, Vector2.One, Color.White);
             }
         }
+        #endregion
 
+        #region Spawn
         private void OnEnemySpawn(Enemy.EnemyType type)
         {
-            int side = _random.Next(0, 2) * 2 - 1;
+            int side = CommonRandom.Random.Next(0, 2) * 2 - 1;
             switch (type)
             {
                 default:
@@ -1111,10 +1110,9 @@ namespace MarioBros2023
         private void SpawnTurtle(int side)
         {
             spawnCount++;
-            side = -1;
             Enemy newTurtle = new Enemy(_turtleSpriteSheet, _level, _enemySpawnSpound, _enemyFlip);
             newTurtle.name = $"Turtle {spawnCount}";
-            newTurtle.SetBaseSpeed(ConfigManager.GetConfig("TURTLE_SPEED", 25f));
+            newTurtle.SetBaseSpeed(ConfigManager.GetConfig("TURTLE_SPEED", 20f));
             newTurtle.Enter(side);
             _enemies.Add(newTurtle);
         }
@@ -1122,11 +1120,12 @@ namespace MarioBros2023
         private void SpawnCrab(int side)
         {
             Enemy newCrab = new Crab(_crabSpriteSheet, _level, _enemySpawnSpound, _enemyFlip);
-
+            newCrab.name = $"Turtle {spawnCount}";
             newCrab.SetBaseSpeed(ConfigManager.GetConfig("CRAB_SPEED", 30f));
             newCrab.Enter(side);
             _enemies.Add(newCrab);
         }
+        #endregion
 
         private void Splash(int x)
         {
@@ -1253,7 +1252,7 @@ namespace MarioBros2023
                 Coin newCoin = new Coin(_coinSpriteSheet, _level, _coinSpawnSound, _coinCollectSound);
                 newCoin.SetBaseSpeed(0f);
                 newCoin.MoveTo(positions[i]);
-                newCoin.SetFrame(_random.Next(newCoin.SpriteSheet.GetAnimationFrameCount("Rotate")));
+                newCoin.SetFrame(CommonRandom.Random.Next(newCoin.SpriteSheet.GetAnimationFrameCount("Rotate")));
                 newCoin.IgnorePlatforms = true;
                 _enemies.Add(newCoin);
             }
@@ -1266,7 +1265,13 @@ namespace MarioBros2023
         {
             public int spriteFrame;
             public Vector2 position;
+            public Color color;
             public float timer;
+
+            public PopScore()
+            {
+                timer = 0;
+            }
         }
 
         private List<PopScore> _popScores = new List<PopScore>();
@@ -1285,21 +1290,21 @@ namespace MarioBros2023
             }
             if (show)
             {
-
+                Color color = player == _mario ? _marioScoreColor : _luigiScoreColor;
                 Vector2 scorePosition = position - new Vector2(0, _marioSpriteSheet.SpriteHeight);
                 switch (score)
                 {
                     case 800:
-                        _popScores.Add(new PopScore { spriteFrame = 0, position = scorePosition, timer = 0 });
+                        _popScores.Add(new PopScore { spriteFrame = 0, position = scorePosition, color = color });
                         break;
                     case 1600:
-                        _popScores.Add(new PopScore { spriteFrame = 1, position = scorePosition, timer = 0 });
+                        _popScores.Add(new PopScore { spriteFrame = 1, position = scorePosition, color = color });
                         break;
                     case 2400:
-                        _popScores.Add(new PopScore { spriteFrame = 2, position = scorePosition, timer = 0 });
+                        _popScores.Add(new PopScore { spriteFrame = 2, position = scorePosition, color = color });
                         break;
                     case 3200:
-                        _popScores.Add(new PopScore { spriteFrame = 3, position = scorePosition, timer = 0 });
+                        _popScores.Add(new PopScore { spriteFrame = 3, position = scorePosition, color = color });
                         break;
                 }
             }
@@ -1321,7 +1326,7 @@ namespace MarioBros2023
         {
             foreach (PopScore score in _popScores)
             {
-                _scorePopupSheet.DrawFrame(score.spriteFrame, spriteBatch, score.position, 0, Vector2.One, _marioScoreColor);
+                _scorePopupSheet.DrawFrame(score.spriteFrame, spriteBatch, score.position, 0, Vector2.One, score.color);
             }
         }
         #endregion
@@ -1329,7 +1334,6 @@ namespace MarioBros2023
         #region Fireballs
         private Character _redFireball;
         private Character _greenFireball;
-        private bool _exploding;
         private float _redFireballSpawnTimer;
         private int _fireBallMargin = 8;
         private float _redFireBallXSpeed;
@@ -1341,19 +1345,21 @@ namespace MarioBros2023
             _redFireball ??= new Character(_redFireballSpriteSheet);
             _redFireball.MoveTo(new Vector2(81, 31));
             _redFireball.SetAnimation("Move");
-            _redFireball.LookTo(new Vector2(_random.Next(0, 2) * 2 - 1, _random.Next(0, 2) * 2 - 1), rotate: false);
+            _redFireball.LookTo(new Vector2(CommonRandom.Random.Next(0, 2) * 2 - 1, CommonRandom.Random.Next(0, 2) * 2 - 1), rotate: false);
             _redFireball.Visible = true;
-            _exploding = false;
 
             _redFireBallSpawnCount++;
             _redFireBallXSpeed = ConfigManager.GetConfig("MARIO_MAX_SPEED", 60) * MathF.Min(_redFireBallSpawnCount / 2f, 1f);
             _redFireBallYSpeed = _redFireBallSpawnCount < 3 ? _redFireBallXSpeed : _redFireBallXSpeed * 2f;
         }
 
-        private void KillRedFireBall()
+        private void RemoveRedFireBall()
         {
-            _redFireball.Visible = false;
-            _redFireballSpawnTimer = 0;
+            if (_redFireball != null)
+            {
+                _redFireball.Visible = false;
+                _redFireballSpawnTimer = 0;
+            }
         }
 
         private void UpdateRedFireball(float deltaTime)
@@ -1363,72 +1369,70 @@ namespace MarioBros2023
             {
                 if (_redFireballSpawnTimer > ConfigManager.GetConfig("RED_FIREBALL_DURATION", 60))
                 {
-                    KillRedFireBall();
+                    KillFireball(_redFireball);
                 }
                 else
                 {
-                    if (!_exploding)
+                    Vector2 lookTo = _redFireball.MoveDirection;
+                    bool hasBumped = false;
+                    if (_redFireball.Position.X - _redFireball.SpriteSheet.LeftMargin <= _fireBallMargin)
                     {
-                        Vector2 lookTo = _redFireball.MoveDirection;
-                        bool hasBumped = false;
-                        if (_redFireball.Position.X - _redFireball.SpriteSheet.LeftMargin <= _fireBallMargin)
-                        {
-                            hasBumped = BumpLeft(ref lookTo);
-                        }
-                        if (_redFireball.Position.X + _redFireball.SpriteSheet.RightMargin > SCREEN_WIDTH - _fireBallMargin)
-                        {
-                            hasBumped = BumpRight(ref lookTo);
-                        }
-
-                        if (_redFireball.Position.Y - _redFireball.SpriteSheet.TopMargin <= _fireBallMargin * 2)
-                        {
-                            hasBumped = BumpUp(ref lookTo);
-                        }
-                        if (_redFireball.Position.Y + _redFireball.SpriteSheet.BottomMargin >= SCREEN_HEIGHT - _fireBallMargin * 2)
-                        {
-                            hasBumped = BumpDown(ref lookTo);
-                        }
-
-                        int centerGridPositionX = (int)MathF.Floor(_redFireball.Position.X / 8);
-                        int lowerGridPositionY = (int)MathF.Floor((_redFireball.Position.Y + _redFireballSpriteSheet.BottomMargin) / 8);
-                        int upperGridPositionY = (int)MathF.Floor((_redFireball.Position.Y - _redFireballSpriteSheet.TopMargin) / 8);
-                        if (lowerGridPositionY < 30 && _level[centerGridPositionX, lowerGridPositionY] != LevelTile.Empty)
-                        {
-                            hasBumped = BumpDown(ref lookTo);
-                        }
-                        if (upperGridPositionY >= 0 && _level[centerGridPositionX, upperGridPositionY] != LevelTile.Empty)
-                        {
-                            hasBumped = BumpUp(ref lookTo);
-                        }
-
-                        int centerGridPositionY = (int)MathF.Floor(_redFireball.Position.Y / 8);
-                        int leftGridPositionX = (int)MathF.Floor((_redFireball.Position.X - _redFireballSpriteSheet.LeftMargin) / 8);
-                        int rightGridPositionX = (int)MathF.Floor((_redFireball.Position.X + _redFireballSpriteSheet.RightMargin) / 8);
-                        if (leftGridPositionX >= 0 && _level[leftGridPositionX, centerGridPositionY] != LevelTile.Empty)
-                        {
-                            hasBumped = BumpLeft(ref lookTo);
-                        }
-                        if (rightGridPositionX < 32 && _level[rightGridPositionX, centerGridPositionY] != LevelTile.Empty)
-                        {
-                            hasBumped = BumpRight(ref lookTo);
-                        }
-
-                        if (hasBumped)
-                        {
-                            _redFireballSound.Play();
-                        }
-
-                        _redFireball.LookTo(lookTo);
-
-                        float newX = _redFireball.Position.X + _redFireball.MoveDirection.X * _redFireBallXSpeed * deltaTime;
-                        float newY = _redFireball.Position.Y + _redFireball.MoveDirection.Y * _redFireBallYSpeed * deltaTime;
-                        _redFireball.MoveTo(new Vector2(newX, newY));
-
-                        TestFireballCollision(_mario, _redFireball);
+                        hasBumped = BumpLeft(ref lookTo);
+                    }
+                    if (_redFireball.Position.X + _redFireball.SpriteSheet.RightMargin > SCREEN_WIDTH - _fireBallMargin)
+                    {
+                        hasBumped = BumpRight(ref lookTo);
                     }
 
-                    _redFireball.Animate(deltaTime);
+                    if (_redFireball.Position.Y - _redFireball.SpriteSheet.TopMargin <= _fireBallMargin * 2)
+                    {
+                        hasBumped = BumpUp(ref lookTo);
+                    }
+                    if (_redFireball.Position.Y + _redFireball.SpriteSheet.BottomMargin >= SCREEN_HEIGHT - _fireBallMargin * 2)
+                    {
+                        hasBumped = BumpDown(ref lookTo);
+                    }
+
+                    int centerGridPositionX = (int)MathF.Floor(_redFireball.Position.X / 8);
+                    int lowerGridPositionY = (int)MathF.Floor((_redFireball.Position.Y + _redFireballSpriteSheet.BottomMargin) / 8);
+                    int upperGridPositionY = (int)MathF.Floor((_redFireball.Position.Y - _redFireballSpriteSheet.TopMargin) / 8);
+                    if (lowerGridPositionY < 30 && _level[centerGridPositionX, lowerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpDown(ref lookTo);
+                    }
+                    if (upperGridPositionY >= 0 && _level[centerGridPositionX, upperGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpUp(ref lookTo);
+                    }
+
+                    int centerGridPositionY = (int)MathF.Floor(_redFireball.Position.Y / 8);
+                    int leftGridPositionX = (int)MathF.Floor((_redFireball.Position.X - _redFireballSpriteSheet.LeftMargin) / 8);
+                    int rightGridPositionX = (int)MathF.Floor((_redFireball.Position.X + _redFireballSpriteSheet.RightMargin) / 8);
+                    if (leftGridPositionX >= 0 && _level[leftGridPositionX, centerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpLeft(ref lookTo);
+                    }
+                    if (rightGridPositionX < 32 && _level[rightGridPositionX, centerGridPositionY] != LevelTile.Empty)
+                    {
+                        hasBumped = BumpRight(ref lookTo);
+                    }
+
+                    if (hasBumped)
+                    {
+                        _redFireballSound.Play();
+                    }
+
+                    _redFireball.LookTo(lookTo);
+
+                    float newX = _redFireball.Position.X + _redFireball.MoveDirection.X * _redFireBallXSpeed * deltaTime;
+                    float newY = _redFireball.Position.Y + _redFireball.MoveDirection.Y * _redFireBallYSpeed * deltaTime;
+                    _redFireball.MoveTo(new Vector2(newX, newY));
+
+                    TestFireballCollision(_mario, _redFireball);
+
                 }
+
+                _redFireball.Animate(deltaTime);
             }
             else
             {
@@ -1498,21 +1502,43 @@ namespace MarioBros2023
         {
             int relativePositionX = Math.Abs(player.PixelPositionX - fireball.PixelPositionX);
             int relativePositionY = Math.Abs(player.PixelPositionY - MARIO_COLLISION_HEIGHT / 2 - fireball.PixelPositionY);
-            if (relativePositionX <= MARIO_COLLISION_WIDTH / 2 && relativePositionY <= MARIO_COLLISION_HEIGHT / 2)
+            if (!player.IsDying && !player.IgnorePlatforms && relativePositionX <= MARIO_COLLISION_WIDTH / 2 && relativePositionY <= MARIO_COLLISION_HEIGHT / 2)
             {
                 player.Kill(null);
-                _exploding = true;
-                fireball.SetSpeed(0f);
-                if (fireball == _redFireball)
-                {
-                    fireball.SetAnimation("Disappear", KillRedFireBall);
-                }
-                else
-                {
-                    fireball.SetAnimation("Disappear", KillGreenFireBall);
-                }
-
+                KillFireball(fireball);
             }
+        }
+
+        private void KillFireball(Character fireball)
+        {
+            if (fireball == _redFireball)
+            {
+                _redFireBallXSpeed = _redFireBallYSpeed = 0f;
+                fireball.SetAnimation("Disappear", RemoveRedFireBall);
+            }
+            else
+            {
+                fireball.SetSpeed(0f);
+                fireball.SetAnimation("Disappear", RemoveGreenFireBall);
+            }
+        }
+
+        private void KillFireballs()
+        {
+            if (_redFireball != null)
+            {
+                KillFireball(_redFireball);
+            }
+            if (_greenFireball != null)
+            {
+                KillFireball(_greenFireball);
+            }
+        }
+
+        private void RemoveFireballs()
+        {
+            RemoveRedFireBall();
+            RemoveGreenFireBall();
         }
 
         private int _greenAppearAnimationCount;
@@ -1530,7 +1556,6 @@ namespace MarioBros2023
         {
             _greenFireball ??= new Character(_greenFireballSpriteSheet);
 
-            // Etage de mario
             float spawnY = 53;
             if (_mario.PixelPositionY <= 64)
                 spawnY += 0;
@@ -1594,8 +1619,7 @@ namespace MarioBros2023
                     _greenFireball.Move(deltaTime);
                     if (_greenFireball.PixelPositionX > SCREEN_WIDTH - 24 || _greenFireball.PixelPositionX < 24)
                     {
-                        _greenFireball.SetSpeed(0f);
-                        _greenFireball.SetAnimation("Disappear", KillGreenFireBall);
+                        KillFireball(_greenFireball);
                     }
                     else
                     {
@@ -1624,11 +1648,14 @@ namespace MarioBros2023
             }
         }
 
-        private void KillGreenFireBall()
+        private void RemoveGreenFireBall()
         {
-            _greenFireballSoundInstance.Stop();
-            _greenFireball.Visible = false;
-            _greenFireballTimer = 0;
+            if (_greenFireball != null)
+            {
+                _greenFireballSoundInstance.Stop();
+                _greenFireball.Visible = false;
+                _greenFireballTimer = 0;
+            }
         }
 
         #endregion

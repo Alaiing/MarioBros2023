@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace Oudidon
 {
@@ -39,7 +35,7 @@ namespace Oudidon
                 {
                     return int.Parse(config[key]);
                 }
-                catch 
+                catch
                 {
                     return defaulValue;
                 }
@@ -69,7 +65,7 @@ namespace Oudidon
         {
             if (config.ContainsKey(key))
             {
-                    return config[key];
+                return config[key];
             }
 
             return defaultValue;

@@ -1,14 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
-using SharpDX.Direct3D11;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MarioBros2023
 {
@@ -152,7 +145,7 @@ namespace MarioBros2023
             SetAnimation("Idle");
         }
 
-        protected override void WalkUpdate(float deltaTime)
+        protected override void WalkUpdate(float deltaTime, float stateElapsedTime)
         {
             SimpleControls.GetStates();
             bool hasInput = false;
@@ -258,7 +251,7 @@ namespace MarioBros2023
             }
 
             SetBaseSpeed(MathF.Abs(_currentSpeed));
-            base.WalkUpdate(deltaTime);
+            base.WalkUpdate(deltaTime, stateElapsedTime);
         }
 
         public void PlayerJump()
@@ -281,19 +274,16 @@ namespace MarioBros2023
             _score = 0;
         }
 
-        private float _dyingTimer;
         protected override void DyingEnter()
         {
             base.DyingEnter();
-            _dyingTimer = 0;
             SetAnimation("Hit");
             _hit.Play();
         }
 
-        protected override void DyingUpdate(float deltaTime)
+        protected override void DyingUpdate(float deltaTime, float stateElapsedTime)
         {
-            _dyingTimer += deltaTime;
-            if (_dyingTimer > 1f)
+            if (stateElapsedTime > 1f)
             {
                 SetSpeed(0f);
                 _currentSpeed = 0;
@@ -330,7 +320,7 @@ namespace MarioBros2023
             SetAnimation("Flatten", () => Walk());
         }
 
-        private void FlattenedUpdate(float deltaTime)
+        private void FlattenedUpdate(float deltaTime, float stateElapsedTime)
         {
             Animate(deltaTime);
         }

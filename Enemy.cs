@@ -1,13 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MarioBros2023
 {
@@ -23,7 +17,7 @@ namespace MarioBros2023
         private const string STATE_EXITING = "Exiting";
         private const string STATE_ENTERING = "Entering";
 
-        protected float _enterExitTime;
+        protected float _enterTime;
 
         protected const int SPAWN_DISTANCE = 16;
         protected const int EXIT_DISTANCE = 16;
@@ -82,9 +76,9 @@ namespace MarioBros2023
             SetState(STATE_ENTERING);
         }
 
-        protected override void WalkUpdate(float deltaTime)
+        protected override void WalkUpdate(float deltaTime, float stateElapsedTime)
         {
-            base.WalkUpdate(deltaTime);
+            base.WalkUpdate(deltaTime, stateElapsedTime);
             if (PixelPositionY >= 208)
             {
                 if (MoveDirection.X < 0 && PixelPositionX - SpriteSheet.LeftMargin <= EXIT_MARGIN
@@ -99,7 +93,6 @@ namespace MarioBros2023
         private void ExitEnter()
         {
             IgnorePlatforms = true;
-            _enterExitTime = 0;
             SetAnimation(WalkAnimationName);
             MoveTo(new Vector2(Position.X, EXIT_Y));
         }
@@ -109,13 +102,12 @@ namespace MarioBros2023
 
         }
 
-        protected virtual void ExitUpdate(float deltaTime)
+        protected virtual void ExitUpdate(float deltaTime, float stateElapsedTime)
         {
-            _enterExitTime += deltaTime;
             Move(deltaTime);
             Animate(deltaTime);
 
-            if (_enterExitTime > EXIT_DISTANCE / CurrentSpeed)
+            if (stateElapsedTime > EXIT_DISTANCE / CurrentSpeed)
             {
                 SetState(STATE_ENTERING);
             }
@@ -124,7 +116,7 @@ namespace MarioBros2023
         private void EnterEnter()
         {
             IgnorePlatforms = true;
-            _enterExitTime = 0;
+            _enterTime = 0;
             LookTo(new Vector2(-_enterExitSide, 0));
             float enterX = _enterExitSide > 0 ? RIGHT_SPAWN_X : LEFT_SPAWN_X;
             MoveTo(new Vector2(enterX, SPAWN_Y));
@@ -135,21 +127,20 @@ namespace MarioBros2023
             IgnorePlatforms = false;
             _spawnSound?.Play();
         }
-        private void EnterUpdate(float deltaTime)
+        private void EnterUpdate(float deltaTime, float stateElapsedTime)
         {
             if (TakeSpawn(_enterExitSide))
             {
-                _enterExitTime += deltaTime;
+                _enterTime += deltaTime;
                 Move(deltaTime);
                 Animate(deltaTime);
             }
             else
             {
-                Debug.WriteLine($"Waiting for spawn...");
                 return;
             }
 
-            if (_enterExitTime > SPAWN_DISTANCE / CurrentSpeed)
+            if (_enterTime > SPAWN_DISTANCE / CurrentSpeed)
             {
                 SetState(STATE_WALK);
             }
@@ -161,9 +152,18 @@ namespace MarioBros2023
             EventsManager.FireEvent<Enemy>("ENEMY_DYING", this);
         }
 
-        protected override void DyingUpdate(float deltaTime)
+        protected override void DyingUpdate(float deltaTime, float stateElapsedTime)
         {
-            base.DyingUpdate(deltaTime);
+            if (stateElapsedTime < 0.25f)
+            {
+                SetSpeed(5f);
+                Move(deltaTime);
+            }
+            else
+            {
+                SetSpeed(1f);
+                base.DyingUpdate(deltaTime, stateElapsedTime);
+            }
         }
 
         protected bool TakeSpawn(int direction)

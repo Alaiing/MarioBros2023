@@ -2,12 +2,6 @@
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Oudidon;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace MarioBros2023
 {
@@ -31,7 +25,7 @@ namespace MarioBros2023
         private float _jumpHeight;
 
         public bool IsJumping => _stateMachine.CurrentState == STATE_JUMP;
-        private bool _isFlipped;
+        protected bool _isFlipped;
         private float _flipTimer;
         public bool IsDead => _stateMachine.CurrentState == STATE_DEAD;
         public bool IsDying { get; protected set; }
@@ -257,7 +251,7 @@ namespace MarioBros2023
         }
 
         protected virtual void IdleExit() { }
-        protected virtual void IdleUpdate(float deltaTime)
+        protected virtual void IdleUpdate(float deltaTime, float stateElapsedTime)
         {
             Animate(deltaTime);
         }
@@ -269,7 +263,7 @@ namespace MarioBros2023
         }
         protected virtual void WalkExit() { }
 
-        protected virtual void WalkUpdate(float deltaTime)
+        protected virtual void WalkUpdate(float deltaTime, float stateElapsedTime)
         {
             if (!IgnorePlatforms && !IsOnPlatform())
             {
@@ -294,7 +288,8 @@ namespace MarioBros2023
                 SetSpeed(1f);
             }
         }
-        protected virtual void JumpUpdate(float deltaTime)
+
+        protected virtual void JumpUpdate(float deltaTime, float stateElapsedTime)
         {
             UpdateJump(deltaTime, out bool climaxReached, out bool hitPlatform);
 
@@ -320,7 +315,7 @@ namespace MarioBros2023
         {
         }
 
-        protected virtual void FallUpdate(float deltaTime)
+        protected virtual void FallUpdate(float deltaTime, float stateElapsedTime)
         {
             UpdateFall(deltaTime, out bool landed, out bool hitBottom);
 
@@ -351,7 +346,7 @@ namespace MarioBros2023
             _isFlipped = false;
         }
 
-        protected virtual void FlippedUpdate(float deltaTime)
+        protected virtual void FlippedUpdate(float deltaTime, float stateElapsedTime)
         {
             _flipTimer += deltaTime;
             if (_flipTimer > _flippedDuration)
@@ -382,7 +377,7 @@ namespace MarioBros2023
             SetSpeed(1f);
         }
         protected virtual void DyingExit() { }
-        protected virtual void DyingUpdate(float deltaTime)
+        protected virtual void DyingUpdate(float deltaTime, float stateElapsedTime)
         {
             Fall(0.25f, 15);
         }
@@ -392,7 +387,7 @@ namespace MarioBros2023
             EventsManager.FireEvent("DEATH", this);
         }
         protected virtual void DeadExit() { }
-        protected virtual void DeadUpdate(float deltaTime) { }
+        protected virtual void DeadUpdate(float deltaTime, float stateElapsedTime) { }
 
         #endregion
     }

@@ -1,8 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace Oudidon
 {
@@ -33,7 +31,6 @@ namespace Oudidon
         protected float _baseSpeed;
         protected float _speed;
         public float CurrentSpeed => _speed * _baseSpeed;
-        private float _moveStep;
         protected float _animationSpeed;
         private string _currentAnimation;
         private int _currentAnimationFrameCount;
@@ -49,7 +46,6 @@ namespace Oudidon
             _spriteSheet = spriteSheet;
             _currentScale = Vector2.One;
             _currentFrame = 0;
-            _moveStep = 0;
             _color = Color.White;
             CanChangeDirection = true;
             LookTo(new Vector2(1, 0));
@@ -66,19 +62,11 @@ namespace Oudidon
         public void SetBaseSpeed(float speed)
         {
             _baseSpeed = speed;
-            if (_baseSpeed == 0)
-            {
-                _moveStep = 0;
-            }
         }
 
         public void SetSpeed(float speed)
         {
             _speed = speed;
-            if (speed == 0)
-            {
-                _moveStep = 0;
-            }
         }
 
         public void SetAnimationSpeed(float animationSpeed)

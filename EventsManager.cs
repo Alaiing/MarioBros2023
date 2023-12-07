@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Oudidon
 {
@@ -50,7 +47,7 @@ namespace Oudidon
 
         public class Event<T, Y> : Event
         {
-            protected new event Action<T,Y> Actions;
+            protected new event Action<T, Y> Actions;
 
             public void FireEvent(T param1, Y param2)
             {
@@ -84,7 +81,7 @@ namespace Oudidon
             }
         }
 
-        public static void StopListening(string eventName, Action action) 
+        public static void StopListening(string eventName, Action action)
         {
             if (_basicEvents.TryGetValue(eventName, out Event value))
             {

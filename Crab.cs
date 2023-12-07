@@ -1,10 +1,5 @@
 ﻿using Microsoft.Xna.Framework.Audio;
 using Oudidon;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MarioBros2023
 {
@@ -14,10 +9,7 @@ namespace MarioBros2023
         protected override float CurrentFrame => base.CurrentFrame + 4 * _phase;
 
         public override string WalkAnimationName => _angry ? "RunAngry" : "Run";
-        public Crab(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect spawnSound, SoundEffect bumpSound) : base(spriteSheet, level, spawnSound, bumpSound)
-        {
-
-        }
+        public Crab(SpriteSheet spriteSheet, MarioBros.LevelTile[,] level, SoundEffect spawnSound, SoundEffect bumpSound) : base(spriteSheet, level, spawnSound, bumpSound) { }
 
         public override void Bump(PlatformCharacter player, int direction, bool withSound)
         {
@@ -26,6 +18,7 @@ namespace MarioBros2023
                 _angry = true;
                 SetAnimation(WalkAnimationName);
                 SetBaseSpeed(_baseSpeed + 7f);
+                SetSpeed(0f);
                 Jump(0.25f, 15, animationName: null);
             }
             else
@@ -36,6 +29,23 @@ namespace MarioBros2023
                     _angry = false;
                     SetBaseSpeed(_baseSpeed - 7f);
                 }
+            }
+        }
+
+        protected override void JumpExit()
+        {
+            if (!_isFlipped && !_angry)
+            {
+                SetSpeed(1f);
+            }
+        }
+
+        protected override void FallExit()
+        {
+            base.FallExit();
+            if (_angry)
+            {
+                SetSpeed(1f);
             }
         }
     }
