@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.7.34031.279
+VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarioBros2023", "MarioBros2023.csproj", "{53E48A2D-60E3-4A8E-A9DD-BDA9E79E43E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarioBros2023Alt", "MarioBros2023.csproj", "{886960A6-C3F6-4D45-98E8-33C825E35084}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{53E48A2D-60E3-4A8E-A9DD-BDA9E79E43E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{53E48A2D-60E3-4A8E-A9DD-BDA9E79E43E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{53E48A2D-60E3-4A8E-A9DD-BDA9E79E43E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{53E48A2D-60E3-4A8E-A9DD-BDA9E79E43E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{886960A6-C3F6-4D45-98E8-33C825E35084}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{886960A6-C3F6-4D45-98E8-33C825E35084}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{886960A6-C3F6-4D45-98E8-33C825E35084}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{886960A6-C3F6-4D45-98E8-33C825E35084}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1DE30607-16BB-40AB-988A-27888E00B855}
+		SolutionGuid = {1B9239E7-8928-4F27-BBA0-C3EE8A9B7315}
 	EndGlobalSection
 EndGlobal
